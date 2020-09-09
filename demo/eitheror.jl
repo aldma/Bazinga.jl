@@ -29,12 +29,13 @@
                 arXiv:1809.02388v1 [math.OC] 7 Sep 2018
 """
 
-push!(LOAD_PATH,"/home/alberto/Documents/optimo/src");
-push!(LOAD_PATH,"/home/alberto/Documents/bazinga/src");
+push!(LOAD_PATH,"/home/alberto/Documents/OptiMo.jl/src");
+push!(LOAD_PATH,"/home/alberto/Documents/Bazinga.jl/src");
 
 using Bazinga, OptiMo
 using Random, LinearAlgebra
 using Printf
+using Plots
 
 ###################################################################################
 # problem definition
@@ -166,7 +167,7 @@ solver = Bazinga.ALPX( max_iter=50,
                        tol_optim=1e-6,
                        tol_cviol=1e-8,
                        verbose=false,
-                       subsolver=:panoc,
+                       subsolver=:zerofpr,
                        subsolver_verbose=false )
 
 #out = solver( problem )
@@ -186,6 +187,8 @@ xmax = +5.0
 ntests = 1e+3
 atol = 1e-4
 ndots = round(Int,cbrt(ntests^2))
+
+
 
 for i=1:ntests
 
@@ -209,4 +212,45 @@ for i=1:ntests
         @printf "\n"
     end
 
+end
+
+
+
+xbox = [-3.0, 6.0]
+ybox = [-3.0, 6.0]
+
+x1vec = x1box(1):1:x1box(2);
+x2vec = x2box(1):1:x2box(2);
+y0 = zeros(m,1);
+
+
+
+function plot_feas_set( xbox, ybox )
+    @assert xbox[1] <= 0.0
+    @assert xbox[2] >= 0.0
+    xmin = xbox[1]
+    xmax = xbox[2]
+    ymin = ybox[1]
+    ymax = ybox[2]
+    # parabola left
+    # x^2 <= 4*y
+    xtmp = collect(range(xmin,stop=0.0,length=100))
+    ytmp = (xtmp.^2)/4
+    xv = [ xmin; xtmp]
+    yv = [ ymax; ytmp]
+    # circle bottom
+    # (x-3)^2 + (y-1)^2 - 10 <= 0
+    xtmp = collect(range(0.0,stop=2.0,length=100))
+    ytmp = 1 .- sqrt.( 10 .- (xtmp .- 3).^2 )
+    xv = [xv; xtmp; 2.0; 4.0]
+    yv = [yv; ytmp; 3.0; 4.0]
+    # parabola right
+    # x^2 <= 4*y
+    xtmp = collect(range(4.0,stop=xmax,length=100))
+    ytmp = (xtmp.^2)/4;
+    xv = [xv; xtmp; xmin]
+    yv = [yv; ytmp; ymax]
+
+    plot(Shape(xv,yv), c=:red, xlims=(xmin,xmax), ylims=(ymin,ymax), fillalpha=0.6)
+    plot!(x=2,y=-2,markercolor=:black,shape=:circle,markersize=200)
 end
