@@ -203,11 +203,14 @@ function Base.iterate(iter::ALPX_iterable{R}, state::ALPX_state{R,Tx}) where {R,
     # infeasibility stationarity
     infeas_station!(iter.prob, state.x, state.px, iter.opts.bigeps, state.sx)
     state.infsta = norm(state.sx, Inf)
+    # safeguarded dual update
     # complementarity slackness
     compl_slackness!(iter.prob, state.cx, state.μ, state.y, state.w, state.z)
-    state.cslack = norm(state.w, Inf)
-    # safeguarded dual update
     state.y .+= state.z
+    state.w .= state.cx .+ state.μ .* state.y
+    proj!(iter.prob, state.w, state.z)
+    state.w .= state.cx .- state.z
+    state.cslack = norm(state.w, Inf)
     dual_safeguard!(state.y, state.y_min, state.y_max, iter.opts)
     # penalty parameters
     state.μ_zero *= iter.opts.μ_slow

@@ -23,10 +23,10 @@ nprob = length( problems )
 
 data = DataFrame()
 
-TOL_OPTIM = 1e-6
-TOL_CVIOL = 1e-6
+TOL_OPTIM = 1e-8
+TOL_CVIOL = 1e-8
 
-solver_flag = :ipopt
+solver_flag = :alpx
 subsolver_flag = :zerofpr
 
 for id in 1:1
@@ -103,6 +103,7 @@ n_acceptable = size( datatmp, 1 )
 @printf("      %4.1f/100 infeasible\n", 100*n_infeas/n_tot)
 @printf("      %4.1f/100 unknown\n", 100*n_unknown/n_tot)
 
-filename = (solver_flag == :alpx ? "alpx" : "ipopt")
-filename = "cutest_tmp_" * filename * ".csv"
+filename = (solver_flag == :alpx ? "alpx_" : "ipopt")
+#filename = "cutest_tmp_" * filename * ".csv"
+filename = "cutest_" * filename * "8.csv"
 CSV.write( "/home/alberto/Documents/Bazinga.jl/test/data/" * filename, data )
