@@ -34,8 +34,8 @@ push!(LOAD_PATH,"/home/alberto/Documents/Bazinga.jl/src");
 
 using Bazinga, OptiMo
 using Random, LinearAlgebra
-using Printf
-using Plots
+using DataFrames, CSV
+using Printf, Plots
 
 ###################################################################################
 # problem definition
@@ -162,60 +162,100 @@ problem = EITHEROR()
 ###################################################################################
 # solver build
 ###################################################################################
-solver = Bazinga.ALPX( max_iter=50,
+solver = Bazinga.ALPX( max_iter=10,
                        max_sub_iter=1000,
-                       tol_optim=1e-6,
-                       tol_cviol=1e-8,
                        verbose=false,
-                       subsolver=:zerofpr,
-                       subsolver_verbose=false )
-
-#out = solver( problem )
-#print( out )
-#x = out.x;
+                       subsolver=:zerofpr )
 
 R = eltype( problem.meta.x0 )
 nvar = problem.meta.nvar
 
-global c22 = 0
-global c44 = 0
-global cun = 0
-
-xmin = -5.0
-xmax = +5.0
+xmin = -4.0
+xmax =  8.0
 
 ntests = 1e+3
-atol = 1e-4
 ndots = round(Int,cbrt(ntests^2))
+data = DataFrame()
 
-
+xgrid = [ (i,j) for i=xmin:0.5:xmax, j=xmin:0.5:xmax ]
+xgrid = xgrid[:]
+ntests = length( xgrid )
 
 for i=1:ntests
 
-    x0 = xmin .+ (xmax - xmin) .* rand(R,nvar);
+    #x0 = xmin .+ (xmax - xmin) .* rand(R,nvar);
+    x0 = [xgrid[i][1]; xgrid[i][2]]
 
     out = solver( problem, x0=x0 )
-
-    x = out.x;
-
-    if norm(x - [2; -2], Inf) <= atol
-        global c22 += 1
-    elseif norm(x - [4; 4], Inf) <= atol
-        global c44 += 1
-    else
-        global cun += 1
-        @printf "(%6.4f,%6.4f) from (%6.4f,%6.4f)\n" x[1] x[2] x0[1] x0[2]
-    end
 
     @printf "."
     if mod(i,ndots) == 0
         @printf "\n"
     end
 
+    push!( data, (id=i, initial=x0, final=out.x) )
+
 end
+@printf "\n"
 
+filename = "eitheror"
+filename = filename * "_grid"
+CSV.write( "/home/alberto/Documents/Bazinga.jl/demo/data/" * filename * ".csv", data )
 
+################################################################################
+tolx = 1e-3
 
+global c22 = 0
+global c44 = 0
+global cun = 0
+
+pyplot()
+
+pts = [(0.0,0.0)]
+rad = sqrt(10.0)
+for i in 1:50
+    xx = 2.0 * i/50
+    yy = 1.0 - sqrt(10.0 - (xx - 3)^2)
+    append!(pts, [(xx,yy)])
+end
+append!(pts, [(2,3)])
+append!(pts, [(4,4)])
+for i in 1:50
+    xx = 4 + (xmax-4) * i/50
+    yy = (xx^2)/4
+    append!(pts, [(xx,yy)])
+end
+append!(pts, [(xmin,xmax)])
+for i in 0:50
+    xx = xmin * (1 - i/50)
+    yy = (xx^2)/4
+    append!(pts, [(xx,yy)])
+end
+feasset = Shape( pts )
+#feasset = Shape([(0,0),(2,-2),(2,3),(4,4),(xmax,0.25*xmax^2),(xmin,0.25*xmin^2),(-2,1),(0,0)])
+hplt = plot(feasset, color=plot_color(:grey,0.4), linewidth=0, legend = false)
+xlims!(xmin,xmax)
+ylims!(xmin,xmax)
+
+for i=1:ntests
+    xi = data[i,2]
+    xf = data[i,3]
+
+    if norm(xf - [2.0;-2.0], Inf) <= tolx
+        global c22 += 1
+        scatter!(hplt, [xi[1]], [xi[2]], color=:blue, marker=:circle, markerstrokewidth=0, legend = false)
+    elseif norm(xf - [4.0;4.0], Inf) <= tolx
+        global c44 += 1
+        scatter!(hplt, [xi[1]], [xi[2]], color=:red, marker=:diamond, markerstrokewidth=0, legend = false)
+    else
+        global cun += 1
+        #scatter!(hplt, [xi[1]], [xi[2]], color=:yellow, marker=:cross, legend = false)
+        @printf "(%6.4f,%6.4f) from (%6.4f,%6.4f)\n" xf[1] xf[2] xi[1] xi[2]
+    end
+end
+savefig("/home/alberto/Documents/Bazinga.jl/demo/data/" * filename * ".pdf")
+
+#=
 xbox = [-3.0, 6.0]
 ybox = [-3.0, 6.0]
 
@@ -254,3 +294,4 @@ function plot_feas_set( xbox, ybox )
     plot(Shape(xv,yv), c=:red, xlims=(xmin,xmax), ylims=(ymin,ymax), fillalpha=0.6)
     plot!(x=2,y=-2,markercolor=:black,shape=:circle,markersize=200)
 end
+=#

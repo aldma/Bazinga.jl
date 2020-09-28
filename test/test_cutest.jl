@@ -12,10 +12,10 @@ using NLPModelsIpopt
 #using Percival
 
 problems = CUTEst.select( min_var=1, max_var=100, min_con=1, max_con=100 )
-problems_to_exclude = [ "PALMER7ANE", "PALMER1BNE", "MGH17", "MGH09", "S365",
-                        "POWERSUMNE", "ERRINRSMNE", "HIMMELBFNE", "WEEDSNE",
-                        "PALMER3BNE", "PALMER1ENE", "MISRA1B", "MESH", "MANCINONE" ]
-deleteat!(problems, findall(x->x ∈ problems_to_exclude, problems))
+#problems_to_exclude = [ "PALMER7ANE", "PALMER1BNE", "MGH17", "MGH09", "S365",
+#                        "POWERSUMNE", "ERRINRSMNE", "HIMMELBFNE", "WEEDSNE",
+#                        "PALMER3BNE", "PALMER1ENE", "MISRA1B", "MESH" ]
+#deleteat!(problems, findall(x->x ∈ problems_to_exclude, problems))
 #problems = [ "TENBARS2" ]
 nprob = length( problems )
 #nprob = min( nprob, 25 )
@@ -24,7 +24,7 @@ nprob = length( problems )
 data = DataFrame()
 
 TOL_OPTIM = 1e-8
-TOL_CVIOL = 1e-8
+TOL_CVIOL = TOL_OPTIM
 
 solver_flag = :alpx
 subsolver_flag = :zerofpr
@@ -65,7 +65,7 @@ for id in 1:nprob
                                 tol_optim=TOL_OPTIM,
                                 tol_cviol=TOL_CVIOL,
                                 subsolver=subsolver_flag,
-                                max_iter=100,
+                                max_iter=50,
                                 max_sub_iter=1000 )
         out = solver( prob )
         status = out.status
@@ -105,5 +105,5 @@ n_acceptable = size( datatmp, 1 )
 
 filename = (solver_flag == :alpx ? "alpx_" : "ipopt")
 #filename = "cutest_tmp_" * filename * ".csv"
-filename = "cutest_" * filename * "8.csv"
+filename = "cutest_" * filename * "_8red.csv"
 CSV.write( "/home/alberto/Documents/Bazinga.jl/test/data/" * filename, data )

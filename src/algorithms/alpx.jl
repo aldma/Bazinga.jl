@@ -82,6 +82,7 @@ mutable struct ALPX_state{R<:Real,Tx<:AbstractArray{R},TS,TA<:AugLagOptiModel{R}
     cslack_old::Maybe{R}    # previous compl. slackness
     sub_iter::Int           # subsolver iterations
     sub_flag::Bool          # subproblem successful
+    sub_iter_tot::Int       # overall subsolver iterations
     subsolver::TS           # subsolver
     alprob::TA              # augmented Lagrangian subproblem
 end
@@ -168,6 +169,7 @@ function Base.iterate(iter::ALPX_iterable{R}) where {R}
         nothing,
         -1,
         false,
+        0,
         subsolver,
         alprob,
     )
@@ -185,6 +187,7 @@ function Base.iterate(iter::ALPX_iterable{R}, state::ALPX_state{R,Tx}) where {R,
     state.subsolver.tol_optim = state.ϵsub
     sub_out = state.subsolver(state.alprob, x0 = state.x)
     state.sub_iter = sub_out.iterations
+    state.sub_iter_tot += state.sub_iter
     state.sub_flag = (sub_out.optimality <= state.ϵsub)
     # primal update
     copyto!(state.x, sub_out.x)
@@ -206,28 +209,36 @@ function Base.iterate(iter::ALPX_iterable{R}, state::ALPX_state{R,Tx}) where {R,
     # safeguarded dual update
     # complementarity slackness
     compl_slackness!(iter.prob, state.cx, state.μ, state.y, state.w, state.z)
-    state.y .+= state.z
-    state.w .= state.cx .+ state.μ .* state.y
-    proj!(iter.prob, state.w, state.z)
-    state.w .= state.cx .- state.z
     state.cslack = norm(state.w, Inf)
-    dual_safeguard!(state.y, state.y_min, state.y_max, iter.opts)
+    state.y .+= state.z
     # penalty parameters
     state.μ_zero *= iter.opts.μ_slow
     if state.cslack_old === nothing
         if state.cviol > 0
             penalty_estimate!(state.objec, state.px, state.μ, iter.opts.μ_est)
         end
-    elseif (state.cslack <= iter.opts.tol_cviol) && (state.cviol <= iter.opts.tol_cviol)
-        state.μ *= iter.opts.μ_grow
-        state.μ_zero = min(state.μ_zero, maximum(state.μ))
-    elseif (state.cslack <= iter.opts.θ * state.cslack_old)
-        # do nothing
     else
-        state.μ .*= iter.opts.μ_down
+        if (state.cviol <= iter.opts.tol_cviol)
+            state.w .= state.cx .+ state.μ .* state.y
+            proj!(iter.prob, state.w, state.z)
+            state.w .= state.cx .- state.z
+            if norm(state.w, Inf) <= iter.opts.tol_cviol
+                state.μ *= iter.opts.μ_grow
+                state.μ_zero = min(state.μ_zero, maximum(state.μ))
+            elseif (state.cslack <= iter.opts.θ * state.cslack_old)
+                # do nothing
+            else
+                state.μ .*= iter.opts.μ_down
+            end
+        elseif (state.cslack <= iter.opts.θ * state.cslack_old)
+            # do nothing
+        else
+            state.μ .*= iter.opts.μ_down
+        end
     end
     state.μ .= max.(iter.opts.μ_min, min.(state.μ, state.μ_zero))
     state.cslack_old = copy(state.cslack)
+    dual_safeguard!(state.y, state.y_min, state.y_max, iter.opts)
     # subproblem tolerance
     if state.sub_flag &&
        (state.optim <= iter.opts.tol_optim_sqrt) &&
@@ -319,6 +330,7 @@ end
 struct ALPX{R<:Real}
     max_iter::Int
     max_sub_iter::Int
+    max_sub_iter_tot::Int
     tol_optim::R
     tol_cviol::R
     tol_cviol_sqrt::R
@@ -332,6 +344,7 @@ struct ALPX{R<:Real}
     function ALPX{R}(;
         max_iter::Int = 100,
         max_sub_iter::Int = 10000,
+        max_sub_iter_tot::Int = 100000,
         tol_optim::R = R(1e-8),
         tol_cviol::R = R(1e-8),
         theta::R = R(0.5),
@@ -364,6 +377,7 @@ struct ALPX{R<:Real}
     ) where {R}
         @assert 0 < max_iter
         @assert 0 < max_sub_iter
+        @assert 0 < max_sub_iter_tot
         @assert 0 < bigeps
         @assert 0 < tol_optim < 1 < tol_diverging
         @assert 0 < tol_cviol < 1
@@ -421,6 +435,7 @@ struct ALPX{R<:Real}
         new(
             max_iter,
             max_sub_iter,
+            max_sub_iter_tot,
             tol_optim,
             tol_cviol,
             tol_cviol_sqrt,
@@ -467,7 +482,8 @@ function (solver::ALPX{R})(
         stop_solved(state) ||
         stop_unbound(state) ||
         stop_illegal(state) ||
-        stop_infeas(state)
+        stop_infeas(state) ||
+        (state.sub_iter_tot >= solver.max_sub_iter_tot)
 
     disp((i, state)) = begin
         @printf("%5d | %+.3e | ", i, state.objec)
@@ -514,7 +530,7 @@ function (solver::ALPX{R})(
         :unbounded
     elseif stop_illegal(state)
         :ieee_nan_inf
-    elseif (num_iters >= solver.max_iter)
+    elseif (num_iters >= solver.max_iter) || (state.sub_iter_tot >= solver.max_sub_iter_tot)
         :max_iter
     else
         :unknown
@@ -530,7 +546,9 @@ function (solver::ALPX{R})(
         iterations = num_iters,
         time = time() - tstart,
         solver_name = "ALPX",
-        solver = Dict(:cslackness => state.cslack, :infstation => state.infsta),
+        solver = Dict(:cslackness => state.cslack,
+                      :infstation => state.infsta,
+                      :sub_iterations => state.sub_iter_tot),
     )
 
 end

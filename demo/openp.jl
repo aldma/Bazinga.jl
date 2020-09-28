@@ -30,8 +30,8 @@
                 arXiv:2003.00292v1 [math.OC] 29 Feb 2020
 """
 
-push!(LOAD_PATH,"/home/alberto/Documents/optimo/src");
-push!(LOAD_PATH,"/home/alberto/Documents/bazinga/src");
+push!(LOAD_PATH,"/home/alberto/Documents/OptiMo.jl/src");
+push!(LOAD_PATH,"/home/alberto/Documents/Bazinga.jl/src");
 
 using Bazinga, OptiMo
 using Random, LinearAlgebra

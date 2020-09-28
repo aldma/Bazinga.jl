@@ -35,12 +35,13 @@
                 PhD thesis, University of Würzburg, 2009.
 """
 
-push!(LOAD_PATH,"/home/albertodm/Documents/optimo/src");
-push!(LOAD_PATH,"/home/albertodm/Documents/bazinga.jl/src");
+push!(LOAD_PATH,"/home/alberto/Documents/OptiMo.jl/src");
+push!(LOAD_PATH,"/home/alberto/Documents/Bazinga.jl/src");
 
 using Bazinga, OptiMo
 using Random, LinearAlgebra
-using Printf
+using DataFrames, CSV
+using Printf, Plots
 
 ###################################################################################
 # problem definition
@@ -151,55 +152,82 @@ problem = MPVCA( ncon=5 )
 solver = Bazinga.ALPX( max_iter=10,
                        max_sub_iter=1000,
                        verbose=false,
-                       subsolver=:panoc )
+                       subsolver=:zerofpr )
 
 R = eltype( problem.meta.x0 )
 nvar = problem.meta.nvar
 
-global c00 = 0
-global c05 = 0
-global c11 = 0
-global cun = 0
-
 xmin = -5.0
 xmax = 20.0
 
-ntests = 1e+2
+ntests = 1e+3
 ndots = round(Int,cbrt(ntests^2))
+data = DataFrame()
+
+xgrid = [ (i,j) for i=xmin:0.5:xmax, j=xmin:0.5:xmax ]
+xgrid = xgrid[:]
+ntests = length( xgrid )
 
 for i=1:ntests
 
-    x0 = xmin .+ (xmax - xmin) .* rand(R,nvar);
+    #x0 = xmin .+ (xmax - xmin) .* rand(R,nvar);
+    x0 = [xgrid[i][1]; xgrid[i][2]]
 
     out = solver( problem, x0=x0 )
-
-    x = out.x;
-
-    if norm(x,Inf) <= 1e-4
-        global c00 += 1
-        #@printf "0,0 \n"
-        #scatter!(plt, x0[1], x0[2],color=:orangered)
-    elseif norm(x-[0.0;5.0],Inf) <= 1e-4
-        global c05 += 1
-        #@printf "5,0 from (%4.2f,%4.2f)\n" x0[1] x0[2]
-        #scatter!(plt, x0[1], x0[2],color=:steelblue)
-    elseif x[1] >= 0 && x[2] >= 0 && x[1]+x[2] <= 3
-        global c11 += 1
-        #@printf "1,1 from (%4.2f,%4.2f)\n" x0[1] x0[2]
-        #scatter!(plt, x0[1], x0[2],color=:steelblue)
-    else
-        global cun += 1
-        @printf "(%6.4f,%6.4f) from (%6.4f,%6.4f)\n" x[1] x[2] x0[1] x0[2]
-        #scatter!(plt, [x0[1],x[1]], [x0[2],x[2]],color=:green)
-    end
 
     @printf "."
     if mod(i,ndots) == 0
         @printf "\n"
     end
 
+    push!( data, (id=i, initial=x0, final=out.x) )
+
+end
+@printf "\n"
+
+filename = "mpvca_$(problem.meta.ncon)"
+filename = filename * "_grid"
+CSV.write( "/home/alberto/Documents/Bazinga.jl/demo/data/" * filename * ".csv", data )
+
+################################################################################
+tolx = 1e-3
+
+global c_00 = 0
+global c_05 = 0
+global c_11 = 0
+global c_un = 0
+
+pyplot()
+
+feasset = Shape([(0.0,xmax),(0.0,5*sqrt(2)),(5*sqrt(2),0.0),(xmax,0.0),(xmax,xmax),(0.0,xmax)])
+hplt = plot(feasset, color=plot_color(:grey,0.4), linewidth=0, legend = false)
+#scatter(0, 0, color=:grey, marker=:circle, legend = false)
+#plot!(hplt, [0,0], [5,xmax], color=:grey, legend = false)
+xlims!(xmin,xmax)
+ylims!(xmin,xmax)
+#plot!(hplt, [0,5*sqrt(2)], [5*sqrt(2),0], color=:grey, legend = false)
+#plot!(hplt, [5*sqrt(2),xmax], [0,0], color=:grey, legend = false)
+#plot!(hplt, Shape([(0.0,xmax),(0.0,5*sqrt(2)),(5*sqrt(2),0.0),(xmax,0.0),(xmax,xmax),(0.0,xmax)]), color=:grey, fillalpha=0.4, legend = false)
+#plot!(hplt, [], [], fill)
+
+for i in 1:ntests
+    xi = data[i,2]
+    xf = data[i,3]
+
+    if norm(xf,Inf) <= tolx
+        global c_00 += 1
+        scatter!(hplt, [xi[1]], [xi[2]], color=:blue, marker=:circle, markerstrokewidth=0, legend = false)
+    elseif norm(xf - [0.0;5.0],Inf) <= tolx
+        global c_05 += 1
+        scatter!(hplt, [xi[1]], [xi[2]], color=:red, marker=:diamond, markerstrokewidth=0, legend = false)
+    elseif xf[1] >= 0 && xf[2] >= 0 && xf[1]+xf[2] <= 3
+        global c_11 += 1
+        scatter!(hplt, [xi[1]], [xi[2]], color=:green, marker=:star5, markerstrokewidth=0, legend = false)
+    else
+        global c_un += 1
+        #scatter!(hplt, [xi[1]], [xi[2]], color=:yellow, marker=:cross, legend = false)
+        @printf "(%6.4f,%6.4f) from (%6.4f,%6.4f)\n" x[1] x[2] x0[1] x0[2]
+    end
 end
 
-#@printf "\n\n"
-#x0 = [3.8665; 5.5150]
-#out = solver( problem, x0=x0 )
+savefig("/home/alberto/Documents/Bazinga.jl/demo/data/" * filename * ".pdf")
