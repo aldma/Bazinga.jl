@@ -486,7 +486,7 @@ function (solver::ALPX{R})(
         (state.sub_iter_tot >= solver.max_sub_iter_tot)
 
     disp((i, state)) = begin
-        @printf("%5d | %+.3e | ", i, state.objec)
+        @printf("%5d | %+.3e | ", i-1, state.objec)
         state.optim === nothing ? @printf("%9s  ", "") : @printf("%.3e  ", state.optim)
         state.cslack === nothing ? @printf("%9s  ", "") :
             @printf("%.3e  ", state.cslack)
@@ -502,7 +502,7 @@ function (solver::ALPX{R})(
 
     iter = ALPX_iterable(prob, x0, y0, mu, solver.opts)
     iter = halt(iter, stop)
-    iter = take(iter, solver.max_iter)
+    iter = take(iter, solver.max_iter + 1)
     iter = enumerate(iter)
     if solver.verbose
         @printf(

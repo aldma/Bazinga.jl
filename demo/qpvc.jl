@@ -27,8 +27,8 @@
                 Pacific Journal of Optimization
 """
 
-push!(LOAD_PATH, "/home/alberto/Documents/OptiMo.jl/src");
-push!(LOAD_PATH, "/home/alberto/Documents/Bazinga.jl/src");
+push!(LOAD_PATH, "/home/albertodm/Documents/OptiMo.jl/src");
+push!(LOAD_PATH, "/home/albertodm/Documents/Bazinga.jl/src");
 
 using Bazinga, OptiMo
 using Random, LinearAlgebra
@@ -146,8 +146,7 @@ problem = QPVC()
 ###################################################################################
 # solver build
 ###################################################################################
-solver =
-    Bazinga.ALPX(max_iter = 50, max_sub_iter = 1000, verbose = true, subsolver = :zerofpr)
+solver = Bazinga.ALPX(max_sub_iter = 1000, verbose = false, subsolver = :zerofpr)
 out = solver(problem)
 print(out)
 
@@ -183,8 +182,25 @@ end
 @printf "\n"
 
 filename = "qpvc"
-CSV.write("/home/alberto/Documents/Bazinga.jl/demo/data/" * filename * ".csv", data)
+CSV.write("/home/albertodm/Documents/Bazinga.jl/demo/data/" * filename * ".csv", data)
 
 pyplot()
 
-histogram( data[:iters], bins=20 )
+figname = filename * "_time"
+histogram( log10.(data[!,2]), bins=10, legend=false )
+xlabel!("log10(elapsed time [s])")
+savefig("/home/albertodm/Documents/Bazinga.jl/demo/data/" * figname * ".pdf")
+
+figname = filename * "_iters"
+histogram( data[!,3], bins=10, legend=false )
+xlabel!("iterations")
+savefig("/home/albertodm/Documents/Bazinga.jl/demo/data/" * figname * ".pdf")
+
+figname = filename * "_subiters"
+histogram( data[!,4], bins=10, legend=false )
+xlabel!("tot sub iterations")
+savefig("/home/albertodm/Documents/Bazinga.jl/demo/data/" * figname * ".pdf")
+
+max_cviol = maximum( data[!,5] )
+max_optim = maximum( data[!,6] )
+max_cslack = maximum( data[!,7] )
