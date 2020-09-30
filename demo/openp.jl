@@ -30,8 +30,9 @@
                 arXiv:2003.00292v1 [math.OC] 29 Feb 2020
 """
 
-push!(LOAD_PATH,"/home/alberto/Documents/OptiMo.jl/src");
-push!(LOAD_PATH,"/home/alberto/Documents/Bazinga.jl/src");
+foldername = "/home/alberto/Documents/";
+push!(LOAD_PATH, foldername * "OptiMo.jl/src");
+push!(LOAD_PATH, foldername * "Bazinga.jl/src");
 
 using Bazinga, OptiMo
 using Random, LinearAlgebra
@@ -123,17 +124,42 @@ problem = OPENP( p=p0 )
 ###################################################################################
 # solver build
 ###################################################################################
-solver = Bazinga.ALPX( max_iter=50,
-                       max_sub_iter=1000,
-                       tol_optim=1e-5, # OpEn 1e-5
+VERBOSE = false
+
+# warm up
+solver = Bazinga.ALPX( tol_optim=1e-5, # OpEn 1e-5
+                       tol_cviol=1e-4,
+                       verbose=VERBOSE )
+out = solver( problem )
+print( out )
+@printf "\n\n\n"
+
+# OpEn setup
+solver = Bazinga.ALPX( tol_optim=1e-5, # OpEn 1e-5
                        tol_cviol=1e-4, # OpEn 1e-4
                        eps_init=1e-4,  # OpEn 1e-4
                        mu_down=0.2,    # OpEn 0.2
-                       verbose=true,
-                       subsolver=:zerofpr,
-                       subsolver_verbose=false )
-mu0 = 1e-3 * ones(Float64, problem.meta.ncon)
+                       verbose=false )
+mu0 = 1e-3 * ones(Float64, problem.meta.ncon) # OpEn 1e-3
 out = solver( problem, mu=mu0 )
-
 print( out )
-x = out.x;
+
+# ALPX setup, OpEn initial penalty
+solver = Bazinga.ALPX( tol_optim=1e-5, # OpEn 1e-5
+                       tol_cviol=1e-4, # OpEn 1e-4
+                       verbose=VERBOSE )
+mu0 = 1e-3 * ones(Float64, problem.meta.ncon) # OpEn 1e-3
+out = solver( problem, mu=mu0 )
+print( out )
+
+# ALPX setup, OpEn tolerances
+solver = Bazinga.ALPX( tol_optim=1e-5, # OpEn 1e-5
+                       tol_cviol=1e-4, # OpEn 1e-4
+                       verbose=VERBOSE )
+out = solver( problem )
+print( out )
+
+# ALPX setup
+solver = Bazinga.ALPX( verbose=VERBOSE )
+out = solver( problem )
+print( out )

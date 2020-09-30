@@ -530,7 +530,7 @@ function (solver::ALPX{R})(
         :unbounded
     elseif stop_illegal(state)
         :ieee_nan_inf
-    elseif (num_iters >= solver.max_iter) || (state.sub_iter_tot >= solver.max_sub_iter_tot)
+    elseif (num_iters > solver.max_iter) || (state.sub_iter_tot >= solver.max_sub_iter_tot)
         :max_iter
     else
         :unknown
@@ -543,7 +543,7 @@ function (solver::ALPX{R})(
         objective = state.objec,
         optimality = state.optim,
         cviolation = state.cviol,
-        iterations = num_iters,
+        iterations = num_iters - 1,
         time = time() - tstart,
         solver_name = "ALPX",
         solver = Dict(:cslackness => state.cslack,

@@ -27,12 +27,13 @@
                 Pacific Journal of Optimization
 """
 
-push!(LOAD_PATH, "/home/albertodm/Documents/OptiMo.jl/src");
-push!(LOAD_PATH, "/home/albertodm/Documents/Bazinga.jl/src");
+foldername = "/home/alberto/Documents/"
+push!(LOAD_PATH, foldername * "OptiMo.jl/src");
+push!(LOAD_PATH, foldername * "Bazinga.jl/src");
 
 using Bazinga, OptiMo
 using Random, LinearAlgebra
-using DataFrames, CSV
+using DataFrames, Query, CSV
 using Printf, Plots
 
 ###################################################################################
@@ -146,14 +147,13 @@ problem = QPVC()
 ###################################################################################
 # solver build
 ###################################################################################
-solver = Bazinga.ALPX(max_sub_iter = 1000, verbose = false, subsolver = :zerofpr)
+solver = Bazinga.ALPX(max_sub_iter = 1000, verbose = true, subsolver = :zerofpr)
 out = solver(problem)
 print(out)
 
-solver =
-    Bazinga.ALPX(max_iter = 50, max_sub_iter = 1000, verbose = false, subsolver = :zerofpr)
-data = DataFrame()
+solver = Bazinga.ALPX(max_sub_iter = 1000, verbose = false, subsolver = :zerofpr)
 
+data = DataFrame()
 ntests = 100
 ndots = round(Int, cbrt(ntests^2))
 
@@ -181,26 +181,34 @@ for i = 1:ntests
 end
 @printf "\n"
 
+###################################################################################
+# write
+###################################################################################
 filename = "qpvc"
-CSV.write("/home/albertodm/Documents/Bazinga.jl/demo/data/" * filename * ".csv", data)
+CSV.write(foldername * "Bazinga.jl/demo/data/" * filename * ".csv", data)
 
+###################################################################################
+# plot
+###################################################################################
 pyplot()
 
 figname = filename * "_time"
 histogram( log10.(data[!,2]), bins=10, legend=false )
 xlabel!("log10(elapsed time [s])")
-savefig("/home/albertodm/Documents/Bazinga.jl/demo/data/" * figname * ".pdf")
+savefig(foldername * "Bazinga.jl/demo/data/" * figname * ".pdf")
 
 figname = filename * "_iters"
 histogram( data[!,3], bins=10, legend=false )
 xlabel!("iterations")
-savefig("/home/albertodm/Documents/Bazinga.jl/demo/data/" * figname * ".pdf")
+savefig(foldername * "Bazinga.jl/demo/data/" * figname * ".pdf")
 
 figname = filename * "_subiters"
 histogram( data[!,4], bins=10, legend=false )
 xlabel!("tot sub iterations")
-savefig("/home/albertodm/Documents/Bazinga.jl/demo/data/" * figname * ".pdf")
+savefig(foldername * "Bazinga.jl/demo/data/" * figname * ".pdf")
 
 max_cviol = maximum( data[!,5] )
 max_optim = maximum( data[!,6] )
 max_cslack = maximum( data[!,7] )
+datatmp = data |> @filter(_.status == :first_order) |> DataFrame
+n_first_order = size( datatmp, 1 )
