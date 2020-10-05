@@ -154,7 +154,7 @@ print(out)
 solver = Bazinga.ALPX(max_sub_iter = 1000, verbose = false, subsolver = :zerofpr)
 
 data = DataFrame()
-ntests = 100
+ntests = 1000
 ndots = round(Int, cbrt(ntests^2))
 
 for i = 1:ntests

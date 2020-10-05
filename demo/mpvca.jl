@@ -160,8 +160,8 @@ nvar = problem.meta.nvar
 xmin = -5.0
 xmax = 20.0
 
-ntests = 1e+3
-ndots = round(Int,cbrt(ntests^2))
+#ntests = 1e+3
+#ndots = round(Int,cbrt(ntests^2))
 data = DataFrame()
 
 xgrid = [ (i,j) for i=xmin:0.5:xmax, j=xmin:0.5:xmax ]

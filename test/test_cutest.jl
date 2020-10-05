@@ -1,5 +1,6 @@
-push!(LOAD_PATH,"/home/alberto/Documents/OptiMo.jl/src");
-push!(LOAD_PATH,"/home/alberto/Documents/Bazinga.jl/src");
+foldername = "/home/alberto/Documents/"
+push!(LOAD_PATH, foldername * "OptiMo.jl/src");
+push!(LOAD_PATH, foldername * "Bazinga.jl/src");
 
 using OptiMo, Bazinga
 using CUTEst
@@ -9,7 +10,6 @@ using Printf
 
 using NLPModels
 using NLPModelsIpopt
-#using Percival
 
 problems = CUTEst.select( min_var=1, max_var=100, min_con=1, max_con=100 )
 #problems_to_exclude = [ "PALMER7ANE", "PALMER1BNE", "MGH17", "MGH09", "S365",
@@ -105,5 +105,5 @@ n_acceptable = size( datatmp, 1 )
 
 filename = (solver_flag == :alpx ? "alpx_" : "ipopt")
 #filename = "cutest_tmp_" * filename * ".csv"
-filename = "cutest_" * filename * "_8red.csv"
-CSV.write( "/home/alberto/Documents/Bazinga.jl/test/data/" * filename, data )
+filename = "cutest_" * filename * "_8tmp.csv"
+CSV.write( foldername * "Bazinga.jl/test/data/" * filename, data )

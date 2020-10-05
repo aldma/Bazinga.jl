@@ -29,8 +29,9 @@
                 arXiv:1809.02388v1 [math.OC] 7 Sep 2018
 """
 
-push!(LOAD_PATH,"/home/alberto/Documents/OptiMo.jl/src");
-push!(LOAD_PATH,"/home/alberto/Documents/Bazinga.jl/src");
+foldername = "/home/alberto/Documents/"
+push!(LOAD_PATH, foldername * "OptiMo.jl/src");
+push!(LOAD_PATH, foldername * "Bazinga.jl/src");
 
 using Bazinga, OptiMo
 using Random, LinearAlgebra
@@ -162,7 +163,7 @@ problem = EITHEROR()
 ###################################################################################
 # solver build
 ###################################################################################
-solver = Bazinga.ALPX( max_iter=10,
+solver = Bazinga.ALPX( max_iter=50,
                        max_sub_iter=1000,
                        verbose=false,
                        subsolver=:zerofpr )
@@ -173,11 +174,11 @@ nvar = problem.meta.nvar
 xmin = -4.0
 xmax =  8.0
 
-ntests = 1e+3
-ndots = round(Int,cbrt(ntests^2))
+#ntests = 1e+3
+#ndots = round(Int,cbrt(ntests^2))
 data = DataFrame()
 
-xgrid = [ (i,j) for i=xmin:0.5:xmax, j=xmin:0.5:xmax ]
+xgrid = [ (i,j) for i=xmin:0.25:xmax, j=xmin:0.25:xmax ]
 xgrid = xgrid[:]
 ntests = length( xgrid )
 
@@ -200,7 +201,7 @@ end
 
 filename = "eitheror"
 filename = filename * "_grid"
-CSV.write( "/home/alberto/Documents/Bazinga.jl/demo/data/" * filename * ".csv", data )
+CSV.write( foldername * "Bazinga.jl/demo/data/" * filename * ".csv", data )
 
 ################################################################################
 tolx = 1e-3
@@ -253,7 +254,7 @@ for i=1:ntests
         @printf "(%6.4f,%6.4f) from (%6.4f,%6.4f)\n" xf[1] xf[2] xi[1] xi[2]
     end
 end
-savefig("/home/alberto/Documents/Bazinga.jl/demo/data/" * filename * ".pdf")
+savefig( foldername * "Bazinga.jl/demo/data/" * filename * ".pdf")
 
 #=
 xbox = [-3.0, 6.0]

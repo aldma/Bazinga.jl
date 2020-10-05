@@ -2,12 +2,13 @@ using CSV
 using DataFrames, Query
 using PyPlot, PyCall
 
-ipopt4_filename = "/home/alberto/Documents/Bazinga.jl/test/data/cutest_ipopt_4all.csv"
-alpx4__filename = "/home/alberto/Documents/Bazinga.jl/test/data/cutest_alpx__4all.csv"
-ipopt6_filename = "/home/alberto/Documents/Bazinga.jl/test/data/cutest_ipopt_6all.csv"
-alpx6__filename = "/home/alberto/Documents/Bazinga.jl/test/data/cutest_alpx__6all.csv"
-ipopt8_filename = "/home/alberto/Documents/Bazinga.jl/test/data/cutest_ipopt_8all.csv"
-alpx8__filename = "/home/alberto/Documents/Bazinga.jl/test/data/cutest_alpx__8all.csv"
+foldername = "/home/alberto/Documents/"
+ipopt4_filename = foldername * "Bazinga.jl/test/data/cutest_ipopt_4all.csv"
+alpx4__filename = foldername * "Bazinga.jl/test/data/cutest_alpx__4all.csv"
+ipopt6_filename = foldername * "Bazinga.jl/test/data/cutest_ipopt_6all.csv"
+alpx6__filename = foldername * "Bazinga.jl/test/data/cutest_alpx__6all.csv"
+ipopt8_filename = foldername * "Bazinga.jl/test/data/cutest_ipopt_8all.csv"
+alpx8__filename = foldername * "Bazinga.jl/test/data/cutest_alpx__8all.csv"
 
 stats = Dict( :ALPX6 => CSV.File(alpx6__filename) |> DataFrame,
               :IPOPT6 => CSV.File(ipopt6_filename) |> DataFrame,
@@ -85,7 +86,7 @@ ymin, ymax = ylim()
 vlines(0,ymin,ymax)
 ylim(ymin,ymax)
 gcf()
-savefig("/home/alberto/Documents/Bazinga.jl/test/data/cutest_time_ratio_hist.pdf")
+savefig(foldername * "Bazinga.jl/test/data/cutest_time_ratio_hist.pdf")
 
 #using BenchmarkProfiles
 #performance_profile(P, string.(solvers))
