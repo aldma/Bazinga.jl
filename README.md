@@ -23,7 +23,7 @@ The problem terms are accessed through some oracles:
 
 License
 ----------
-The Bazinga.jl package is licensed under the MIT "Expat" License. We provide this program in the hope that it may be useful to others, and we would very much like to hear about your experience with it. If you found it helpful and are using it, we encourage you to get in touch with us.
+The Bazinga.jl package is licensed under the MIT "Expat" License. We provide this program in the hope that it may be useful to others, and we would very much like to hear about your experience with it. If you found it helpful and are using it, we encourage you to [get in touch](mailto:aldmarchi@gmail.com) with us.
 
 See also
 ----------
