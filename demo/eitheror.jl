@@ -29,10 +29,6 @@
                 arXiv:1809.02388v1 [math.OC] 7 Sep 2018
 """
 
-foldername = "/home/alberto/Documents/"
-push!(LOAD_PATH, foldername * "OptiMo.jl/src");
-push!(LOAD_PATH, foldername * "Bazinga.jl/src");
-
 using Bazinga, OptiMo
 using Random, LinearAlgebra
 using DataFrames, CSV
@@ -132,28 +128,6 @@ function OptiMo.proj!( prob::EITHEROR, cx::AbstractVector, px::AbstractVector )
     end
     return nothing
 end
-#=function proj_eitheror_constr!( c1,c2,p1,p2 )
-    # cx <= 0  or  cy <= 0
-    i_out = (c1 .> 0.0) .& (c2 .> 0.0)
-    i_y2z = (c1 .> c2)
-    p1 .= c1
-    p2 .= c2
-    p1[i_out .& .!i_y2z] .= 0.0
-    p2[i_out .&  i_y2z] .= 0.0
-    return nothing
-end
-using Random
-R=Float64
-n=100
-c=randn(R,n);
-d=randn(R,n);
-for i=1:100
-    a=randn(R,n)
-    b=randn(R,n)
-    proj_eitheror_constr!( a,b,c,d )
-    @assert all((c .<= 0) .| (d .<= 0))
-end
-@printf "Passed"=#
 
 ###################################################################################
 # problem build
@@ -175,7 +149,6 @@ xmin = -4.0
 xmax =  8.0
 
 #ntests = 1e+3
-#ndots = round(Int,cbrt(ntests^2))
 data = DataFrame()
 
 xgrid = [ (i,j) for i=xmin:0.25:xmax, j=xmin:0.25:xmax ]
@@ -190,7 +163,7 @@ for i=1:ntests
     out = solver( problem, x0=x0 )
 
     @printf "."
-    if mod(i,ndots) == 0
+    if mod(i,50) == 0
         @printf "\n"
     end
 

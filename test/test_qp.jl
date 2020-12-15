@@ -1,7 +1,3 @@
-
-push!(LOAD_PATH,"/home/albertodm/Documents/optimo/src");
-push!(LOAD_PATH,"/home/albertodm/Documents/bazinga.jl/src");
-
 using OptiMo, Bazinga
 using Printf
 

@@ -19,11 +19,11 @@ The problem terms are accessed through some oracles:
 * ```c```: function value, Jacobian-vector product
 * ```S```: projection operator, distance function
 
-[OptiMo.jl](https://github.com/aldma/OptiMo.jl) provides a tool for modeling problems in this form and giving access to the oracles of interest.
+[OptiMo.jl](https://github.com/aldma/OptiMo.jl) provides a modeling language for problems in this form, giving access to the oracles of interest.
 
 License
 ----------
-The Bazinga.jl package is licensed under the MIT "Expat" License. We provide this program in the hope that it may be useful to others, and we would very much like to hear about your experience with it. If you found it helpful and are using it, we encourage you to [get in touch](mailto:aldmarchi@gmail.com) with us.
+The Bazinga.jl package is licensed under the MIT "Expat" License. We provide this program in the hope that it may be useful to others, and we would very much like to hear about your experience with it. If you found it helpful, we encourage you to [get in touch](mailto:aldmarchi@gmail.com) with us.
 
 See also
 ----------

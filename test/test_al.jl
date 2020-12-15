@@ -1,13 +1,8 @@
-push!(LOAD_PATH,"/home/albertodm/Documents/optimo/src");
-push!(LOAD_PATH,"/home/albertodm/Documents/bazinga.jl/src");
-
-using OptiMo
-using Bazinga
+using OptiMo, Bazinga
+using Printf, LinearAlgebra
 using CUTEst
-using Printf
-using LinearAlgebra
 
-problems = CUTEst.select( min_var=1, max_var=100, min_con=1, max_con=100 )
+#problems = CUTEst.select( min_var=1, max_var=100, min_con=1, max_con=100 )
 #problem = problems[3]
 problem = "HS93"
 @printf "========================================\n"
@@ -106,25 +101,5 @@ mu .= mu_est .* max.( 1.0, 0.5 .* abs2.( px ) ) ./ max( 1.0, abs( fx ) )
 mu .= max.( T(1e-6), min.( T(1e6), mu ) )
 alprob = AugLagOptiModel( prob, mu, ye )
 aout = zerofpr( alprob, x0=xf )
-
-finalize( nlp )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 finalize( nlp )

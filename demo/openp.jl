@@ -30,10 +30,6 @@
                 arXiv:2003.00292v1 [math.OC] 29 Feb 2020
 """
 
-foldername = "/home/alberto/Documents/";
-push!(LOAD_PATH, foldername * "OptiMo.jl/src");
-push!(LOAD_PATH, foldername * "Bazinga.jl/src");
-
 using Bazinga, OptiMo
 using Random, LinearAlgebra
 using Printf

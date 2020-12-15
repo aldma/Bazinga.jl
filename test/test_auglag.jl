@@ -1,10 +1,6 @@
-push!(LOAD_PATH,"/home/albertodm/Documents/optimo/src");
-push!(LOAD_PATH,"/home/albertodm/Documents/bazinga.jl/src");
-
-using OptiMo
-using Bazinga
-using CUTEst
+using OptiMo, Bazinga
 using Printf
+using CUTEst
 
 VERBOSE = true
 FREQ = 10

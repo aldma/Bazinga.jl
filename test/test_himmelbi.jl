@@ -1,15 +1,7 @@
-foldername = "/home/alberto/Documents/";
-push!(LOAD_PATH, foldername * "OptiMo.jl/src");
-push!(LOAD_PATH, foldername * "Bazinga.jl/src");
-
 using OptiMo, Bazinga
-using CUTEst
-
+using NLPModels, NLPModelsIpopt, CUTEst
 using DataFrames, Query, CSV
 using Printf
-
-using NLPModels
-using NLPModelsIpopt
 
 data = DataFrame();
 
@@ -73,10 +65,6 @@ solver = Bazinga.ALPX(  verbose=true,
 out = solver( prob )
 @printf "sub iters %d \n" out.solver[:sub_iterations]
 @printf "time      %f \n" out.time
-
-
-
-
 
 # finalize
 finalize( nlp )

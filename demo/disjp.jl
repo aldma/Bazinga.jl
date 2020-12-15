@@ -31,9 +31,6 @@
                 arXiv:1905.01893v1 [math.OC] 6 May 2019
 """
 
-push!(LOAD_PATH,"/home/alberto/Documents/optimo/src");
-push!(LOAD_PATH,"/home/alberto/Documents/bazinga/src");
-
 using Bazinga, OptiMo
 using Random, LinearAlgebra
 using Printf

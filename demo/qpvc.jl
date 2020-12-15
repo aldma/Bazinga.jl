@@ -27,10 +27,6 @@
                 Pacific Journal of Optimization
 """
 
-foldername = "/home/alberto/Documents/"
-push!(LOAD_PATH, foldername * "OptiMo.jl/src");
-push!(LOAD_PATH, foldername * "Bazinga.jl/src");
-
 using Bazinga, OptiMo
 using Random, LinearAlgebra
 using DataFrames, Query, CSV
@@ -155,7 +151,6 @@ solver = Bazinga.ALPX(max_sub_iter = 1000, verbose = false, subsolver = :zerofpr
 
 data = DataFrame()
 ntests = 1000
-ndots = round(Int, cbrt(ntests^2))
 
 for i = 1:ntests
     problem = QPVC()
@@ -175,7 +170,7 @@ for i = 1:ntests
         ),
     )
     @printf "."
-    if mod(i, ndots) == 0
+    if mod(i, 50) == 0
         @printf "\n"
     end
 end
@@ -185,7 +180,7 @@ end
 # write
 ###################################################################################
 filename = "qpvc"
-CSV.write(foldername * "Bazinga.jl/demo/data/" * filename * ".csv", data)
+#CSV.write(foldername * "Bazinga.jl/demo/data/" * filename * ".csv", data)
 
 ###################################################################################
 # plot
@@ -195,17 +190,17 @@ pyplot()
 figname = filename * "_time"
 histogram( log10.(data[!,2]), bins=10, legend=false )
 xlabel!("log10(elapsed time [s])")
-savefig(foldername * "Bazinga.jl/demo/data/" * figname * ".pdf")
+#savefig(foldername * "Bazinga.jl/demo/data/" * figname * ".pdf")
 
 figname = filename * "_iters"
 histogram( data[!,3], bins=10, legend=false )
 xlabel!("iterations")
-savefig(foldername * "Bazinga.jl/demo/data/" * figname * ".pdf")
+#savefig(foldername * "Bazinga.jl/demo/data/" * figname * ".pdf")
 
 figname = filename * "_subiters"
 histogram( data[!,4], bins=10, legend=false )
 xlabel!("tot sub iterations")
-savefig(foldername * "Bazinga.jl/demo/data/" * figname * ".pdf")
+#savefig(foldername * "Bazinga.jl/demo/data/" * figname * ".pdf")
 
 max_cviol = maximum( data[!,5] )
 max_optim = maximum( data[!,6] )

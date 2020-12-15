@@ -35,9 +35,6 @@
                 PhD thesis, University of Würzburg, 2009.
 """
 
-push!(LOAD_PATH,"/home/alberto/Documents/OptiMo.jl/src");
-push!(LOAD_PATH,"/home/alberto/Documents/Bazinga.jl/src");
-
 using Bazinga, OptiMo
 using Random, LinearAlgebra
 using DataFrames, CSV
@@ -161,7 +158,6 @@ xmin = -5.0
 xmax = 20.0
 
 #ntests = 1e+3
-#ndots = round(Int,cbrt(ntests^2))
 data = DataFrame()
 
 xgrid = [ (i,j) for i=xmin:0.5:xmax, j=xmin:0.5:xmax ]
@@ -176,7 +172,7 @@ for i=1:ntests
     out = solver( problem, x0=x0 )
 
     @printf "."
-    if mod(i,ndots) == 0
+    if mod(i,50) == 0
         @printf "\n"
     end
 
@@ -230,4 +226,4 @@ for i in 1:ntests
     end
 end
 
-savefig("/home/alberto/Documents/Bazinga.jl/demo/data/" * filename * ".pdf")
+#savefig("/home/alberto/Documents/Bazinga.jl/demo/data/" * filename * ".pdf")

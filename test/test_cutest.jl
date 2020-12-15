@@ -1,25 +1,9 @@
-foldername = "/home/alberto/Documents/"
-push!(LOAD_PATH, foldername * "OptiMo.jl/src");
-push!(LOAD_PATH, foldername * "Bazinga.jl/src");
-
 using OptiMo, Bazinga
-using CUTEst
-
-using DataFrames, Query, CSV
-using Printf
-
-using NLPModels
-using NLPModelsIpopt
+using CUTEst, NLPModels, NLPModelsIpopt
+using DataFrames, Query, CSV, Printf
 
 problems = CUTEst.select( min_var=1, max_var=100, min_con=1, max_con=100 )
-#problems_to_exclude = [ "PALMER7ANE", "PALMER1BNE", "MGH17", "MGH09", "S365",
-#                        "POWERSUMNE", "ERRINRSMNE", "HIMMELBFNE", "WEEDSNE",
-#                        "PALMER3BNE", "PALMER1ENE", "MISRA1B", "MESH" ]
-#deleteat!(problems, findall(x->x ∈ problems_to_exclude, problems))
-#problems = [ "TENBARS2" ]
 nprob = length( problems )
-#nprob = min( nprob, 25 )
-#problems = problems[1:nprob]
 
 data = DataFrame()
 
@@ -50,7 +34,6 @@ for id in 1:nprob
     @printf( "********************  %s  ********************\n", problem )
     nlp = CUTEstModel( problem )
 
-    #out = percival( nlp )
     if solver_flag == :ipopt
         out = ipopt( nlp, tol=TOL_OPTIM )
         status = out.status
@@ -104,6 +87,5 @@ n_acceptable = size( datatmp, 1 )
 @printf("      %4.1f/100 unknown\n", 100*n_unknown/n_tot)
 
 filename = (solver_flag == :alpx ? "alpx_" : "ipopt")
-#filename = "cutest_tmp_" * filename * ".csv"
 filename = "cutest_" * filename * "_8tmp.csv"
 CSV.write( foldername * "Bazinga.jl/test/data/" * filename, data )
