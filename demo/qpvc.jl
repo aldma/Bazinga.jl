@@ -44,9 +44,9 @@ mutable struct QPVC <: AbstractOptiModel
     nvc::Int
 end
 
-function QPVC(; nx::Int = 100, nvc::Int = 25, x0::Vector = zeros(Float64, nx))
+function QPVC(; nx::Int = 100, nvc::Int = 20, x0::Vector = zeros(Float64, nx))
     @assert nx >= 2 * nvc
-    name = "QpVcExample"
+    name = "qpvc"
     ncon = 2 * nvc
     R = Float64
     Q = randn(R, nx, nx)
@@ -135,38 +135,36 @@ function OptiMo.proj!(prob::QPVC, cx::AbstractVector, px::AbstractVector)
     return nothing
 end
 
-###################################################################################
 # problem build
-###################################################################################
 problem = QPVC()
 
-###################################################################################
 # solver build
-###################################################################################
-solver = Bazinga.ALPX(max_sub_iter = 1000, verbose = true, subsolver = :zerofpr)
+solver = Bazinga.ALPX(max_sub_iter = 1000, verbose = false)
+# solver warm-up
 out = solver(problem)
-print(out)
-
-solver = Bazinga.ALPX(max_sub_iter = 1000, verbose = false, subsolver = :zerofpr)
 
 data = DataFrame()
 ntests = 1000
 
 for i = 1:ntests
-    problem = QPVC()
-    out = solver(problem)
-    print(out)
+    local p_nx = rand(10:100)
+    local p_nvc = Int( ceil( p_nx / 5 ) )
+    local problem = QPVC(nx=p_nx, nvc=p_nvc)
+    local out = solver(problem)
+    #print(out)
     push!(
         data,
         (
             id = i,
+            nx = p_nx,
+            nvc = p_nvc,
             time = out.time,
             iters = out.iterations,
             subiters = out.solver[:sub_iterations],
             cviol = out.cviolation,
             optim = out.optimality,
             cslack = out.solver[:cslackness],
-            status = out.status,
+            solved = out.status == :first_order ? 1 : 0,
         ),
     )
     @printf "."
@@ -176,34 +174,12 @@ for i = 1:ntests
 end
 @printf "\n"
 
-###################################################################################
 # write
-###################################################################################
 filename = "qpvc"
-#CSV.write(foldername * "Bazinga.jl/demo/data/" * filename * ".csv", data)
-
-###################################################################################
-# plot
-###################################################################################
-pyplot()
-
-figname = filename * "_time"
-histogram( log10.(data[!,2]), bins=10, legend=false )
-xlabel!("log10(elapsed time [s])")
-#savefig(foldername * "Bazinga.jl/demo/data/" * figname * ".pdf")
-
-figname = filename * "_iters"
-histogram( data[!,3], bins=10, legend=false )
-xlabel!("iterations")
-#savefig(foldername * "Bazinga.jl/demo/data/" * figname * ".pdf")
-
-figname = filename * "_subiters"
-histogram( data[!,4], bins=10, legend=false )
-xlabel!("tot sub iterations")
-#savefig(foldername * "Bazinga.jl/demo/data/" * figname * ".pdf")
+CSV.write("/home/albertodm/Documents/Bazinga.jl/demo/data/" * filename * ".csv", data, header=false)
 
 max_cviol = maximum( data[!,5] )
 max_optim = maximum( data[!,6] )
 max_cslack = maximum( data[!,7] )
-datatmp = data |> @filter(_.status == :first_order) |> DataFrame
+datatmp = data |> @filter(_.solved == 1) |> DataFrame
 n_first_order = size( datatmp, 1 )
