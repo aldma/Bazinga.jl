@@ -3,8 +3,11 @@ close all
 clear all %#ok
 clc
 
-addpath('~/Documents/MATLAB/matlab2tikz/src/');
-settings.save_figures = true;
+save_figures = false;
+
+if save_figures
+    addpath('~/Documents/MATLAB/matlab2tikz/src/');
+end
 
 filename = 'qpvc';
 data = csvread( [filename,'.csv'] );
@@ -30,10 +33,6 @@ ntests = length( time );
 nsolved = sum(solved == 1);
 
 fprintf('solved %d out of %d (%6.2f) \n',nsolved,ntests,100*nsolved/ntests)
-% print_stats('time',time,'%6.4f s')
-% print_stats('iteration',iter,'%6.1f')
-% print_stats('sub-iterations',subiter,'%6.1f')
-% print_stats('max residual',maxresidual,'%6.4e')
 
 figure
 plot(nx,time,'.','MarkerSize',8)
@@ -43,11 +42,11 @@ set(gca,'XScale','log')
 set(gca,'YScale','log')
 drawnow
 
-
-if isfield(settings,'save_figures') && settings.save_figures
+%% store figure
+if save_figures
     fprintf('saving figures...');
     fig_style = get_figure_style();
-    
+
     print_tikz = @(figname) matlab2tikz( [figname,'.tikz'],...
                                       'width', '\columnwidth',...
                                       'height', '0.618\columnwidth',...
@@ -68,13 +67,3 @@ end
 
 % end of file
 fprintf('\nThat`s all folks!\n')
-
-
-
-% function print_stats(name,v,format)
-%     fprintf('===== %s =====\n',name);
-%     fprintf(['median      : ',format,' \n'],median(v));
-%     fprintf(['1st quartile: ',format,' \n'],quantile(v,0.25));
-%     fprintf(['3rd quartile: ',format,' \n'],quantile(v,0.75));
-%     return
-% end

@@ -1,10 +1,12 @@
 
 close all
 clear all %#ok
-% clc
 
-addpath('~/Documents/MATLAB/matlab2tikz/src/');
-settings.save_figures = true;
+save_figures = true;
+
+if save_figures
+    addpath('~/Documents/MATLAB/matlab2tikz/src/');
+end
 
 filename = 'eitheror_grid';
 data = csvread( [filename,'.csv'] );
@@ -33,7 +35,7 @@ fprintf('solved %d out of %d (%6.2f) \n',nsolved,ntests,100*nsolved/ntests)
 print_stats('time',time,'%6.4f s')
 print_stats('iteration',iter,'%6.1f')
 
-%%
+%% plot figures
 i22 = zeros(ntests,1);
 i44 = zeros(ntests,1);
 for i=1:ntests
@@ -79,10 +81,10 @@ ylim([-4,8])
 drawnow
 
 %% store figures
-if isfield(settings,'save_figures') && settings.save_figures
+if save_figures
     fprintf('saving figures...');
     fig_style = get_figure_style();
-    
+
     print_tikz = @(figname) matlab2tikz( [figname,'.tikz'],...
                                       'width', '\columnwidth',...
                                       'height', '\columnwidth',...

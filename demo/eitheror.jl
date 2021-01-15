@@ -81,7 +81,7 @@ function OptiMo.jprod!(
     OptiMo.@lencheck prob.meta.nvar x v
     OptiMo.@lencheck prob.meta.ncon Jv
     Jv .= [
-        v[1] - 2 * x[2] * v[2]
+        v[1] - 2 * v[2]
         2 * x[1] * v[1] - 4 * v[2]
         v[1]
         2 * (x[1] - 3) * v[1] + 2 * (x[2] - 1) * v[2]
@@ -99,7 +99,7 @@ function OptiMo.jtprod!(
     OptiMo.@lencheck prob.meta.ncon v
     Jtv .= [
         v[1] + 2 * x[1] * v[2] + v[3] + 2 * (x[1] - 3) * v[4]
-        -2 * x[2] * v[1] - 4 * v[2] + 2 * (x[2] - 1) * v[4]
+        -2 * v[1] - 4 * v[2] + 2 * (x[2] - 1) * v[4]
     ]
     return nothing
 end
@@ -142,11 +142,16 @@ function OptiMo.proj!(prob::EITHEROR, cx::AbstractVector, px::AbstractVector)
         px[2] = cx[2]
         px[4] = cx[4]
     end
+    #if cx[1] > 0 && cx[3] > 0
+    # ...
     return nothing
 end
 
 # problem build
 problem = EITHEROR()
+
+foldername = "/home/albertodm/Documents/Bazinga.jl/"
+filename = problem.meta.name * "_grid_rev"
 
 # solver build
 solver =
@@ -168,7 +173,6 @@ x0 = [xgrid[1][1]; xgrid[1][2]]
 out = solver(problem, x0 = x0)
 
 for i = 1:ntests
-
     x0 = [xgrid[i][1]; xgrid[i][2]]
 
     out = solver(problem, x0 = x0)
@@ -178,21 +182,24 @@ for i = 1:ntests
         @printf "\n"
     end
 
-    push!(data, (id = i,
-                    xi_1 = x0[1],
-                    xi_2 = x0[2],
-                    xf_1 = out.x[1],
-                    xf_2 = out.x[2],
-                    iter=out.iterations,
-                    time=out.time,
-                    solved = out.status==:first_order ? 1 : 0,
-                    ) )
+    push!(
+        data,
+        (
+            id = i,
+            xi_1 = x0[1],
+            xi_2 = x0[2],
+            xf_1 = out.x[1],
+            xf_2 = out.x[2],
+            iter = out.iterations,
+            time = out.time,
+            solved = out.status == :first_order ? 1 : 0,
+        ),
+    )
 
 end
 @printf "\n"
 
-filename = problem.meta.name * "_grid"
-CSV.write("/home/albertodm/Documents/Bazinga.jl/demo/data/" * filename * ".csv", data, header=false)
+CSV.write(foldername * "demo/data/" * filename * ".csv", data, header = false)
 
 ################################################################################
 tolx = 1e-3
@@ -229,8 +236,8 @@ xlims!(xmin, xmax)
 ylims!(xmin, xmax)
 
 for i = 1:ntests
-    xi = data[i, 2]
-    xf = data[i, 3]
+    xi = [data[i, 2]; data[i, 3]]
+    xf = [data[i, 4]; data[i, 5]]
 
     if norm(xf - [2.0; -2.0], Inf) <= tolx
         global c22 += 1
@@ -259,4 +266,4 @@ for i = 1:ntests
         @printf "(%6.4f,%6.4f) from (%6.4f,%6.4f)\n" xf[1] xf[2] xi[1] xi[2]
     end
 end
-savefig("/home/albertodm/Documents/Bazinga.jl/demo/data/" * filename * ".pdf")
+savefig(foldername * "demo/data/" * filename * ".pdf")

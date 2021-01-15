@@ -125,6 +125,7 @@ function OptiMo.proj!(prob::QPVC, cx::AbstractVector, px::AbstractVector)
         b = cx[i+prob.nvc]
         a = max(a, 0)
         if a + b < 0
+            # if a + b ≤ 0 ...
             a = 0
         else
             b = max(0, b)
@@ -148,8 +149,8 @@ ntests = 1000
 
 for i = 1:ntests
     local p_nx = rand(10:100)
-    local p_nvc = Int( ceil( p_nx / 5 ) )
-    local problem = QPVC(nx=p_nx, nvc=p_nvc)
+    local p_nvc = Int(ceil(p_nx / 5))
+    local problem = QPVC(nx = p_nx, nvc = p_nvc)
     local out = solver(problem)
     #print(out)
     push!(
@@ -176,10 +177,14 @@ end
 
 # write
 filename = "qpvc"
-CSV.write("/home/albertodm/Documents/Bazinga.jl/demo/data/" * filename * ".csv", data, header=false)
+CSV.write(
+    "/home/albertodm/Documents/Bazinga.jl/demo/data/" * filename * "167.csv",
+    data,
+    header = false,
+)
 
-max_cviol = maximum( data[!,5] )
-max_optim = maximum( data[!,6] )
-max_cslack = maximum( data[!,7] )
+max_cviol = maximum(data[!, 5])
+max_optim = maximum(data[!, 6])
+max_cslack = maximum(data[!, 7])
 datatmp = data |> @filter(_.solved == 1) |> DataFrame
-n_first_order = size( datatmp, 1 )
+n_first_order = size(datatmp, 1)
