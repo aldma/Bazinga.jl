@@ -136,6 +136,9 @@ function OptiMo.proj!(prob::QPVC, cx::AbstractVector, px::AbstractVector)
     return nothing
 end
 
+foldername = "/home/alberto/Documents/Bazinga.jl/demo/data/"
+filename = "qpvc"
+
 # problem build
 problem = QPVC()
 
@@ -148,7 +151,7 @@ data = DataFrame()
 ntests = 1000
 
 for i = 1:ntests
-    local p_nx = rand(10:100)
+    local p_nx = rand(10:250)
     local p_nvc = Int(ceil(p_nx / 5))
     local problem = QPVC(nx = p_nx, nvc = p_nvc)
     local out = solver(problem)
@@ -176,9 +179,8 @@ end
 @printf "\n"
 
 # write
-filename = "qpvc"
 CSV.write(
-    "/home/albertodm/Documents/Bazinga.jl/demo/data/" * filename * "167.csv",
+    foldername * filename * ".csv",
     data,
     header = false,
 )
@@ -188,3 +190,17 @@ max_optim = maximum(data[!, 6])
 max_cslack = maximum(data[!, 7])
 datatmp = data |> @filter(_.solved == 1) |> DataFrame
 n_first_order = size(datatmp, 1)
+
+pyplot()
+
+scatter( data[!,2], data[!,4],
+    color = :blue,
+    marker = :circle,
+    markerstrokewidth = 0,
+    legend = false,
+    yaxis= :log, xaxis=:log,
+    xlabel="Problem size nx",
+    ylabel="Run time [s]"
+)
+
+savefig(foldername * filename * ".pdf")

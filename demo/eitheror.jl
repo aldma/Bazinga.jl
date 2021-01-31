@@ -150,8 +150,8 @@ end
 # problem build
 problem = EITHEROR()
 
-foldername = "/home/albertodm/Documents/Bazinga.jl/"
-filename = problem.meta.name * "_grid_rev"
+foldername = "/home/alberto/Documents/Bazinga.jl/demo/data/"
+filename = problem.meta.name * "_grid"
 
 # solver build
 solver =
@@ -199,7 +199,7 @@ for i = 1:ntests
 end
 @printf "\n"
 
-CSV.write(foldername * "demo/data/" * filename * ".csv", data, header = false)
+CSV.write(foldername * filename * ".csv", data, header = false)
 
 ################################################################################
 tolx = 1e-3
@@ -266,4 +266,4 @@ for i = 1:ntests
         @printf "(%6.4f,%6.4f) from (%6.4f,%6.4f)\n" xf[1] xf[2] xi[1] xi[2]
     end
 end
-savefig(foldername * "demo/data/" * filename * ".pdf")
+savefig(foldername * filename * ".pdf")
