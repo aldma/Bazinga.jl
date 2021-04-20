@@ -35,9 +35,6 @@
                 PhD thesis, University of Würzburg, 2009.
 """
 
-push!(LOAD_PATH, "/home/albertodm/Documents/OptiMo.jl/src/")
-push!(LOAD_PATH, "/home/albertodm/Documents/Bazinga.jl/src/")
-
 using Bazinga, OptiMo
 using Random, LinearAlgebra
 using DataFrames, CSV
@@ -180,13 +177,10 @@ function OptiMo.prox!(prob::MPVCA, x::AbstractVector, a::Real, z::AbstractVector
 end
 =#
 
-
-
-
 ###############################################################################
 ###############################################################################
 ###############################################################################
-foldername = "/home/albertodm/Documents/Bazinga.jl/demo/data/"
+foldername = "/home/alberto/Documents/Bazinga.jl/demo/data/"
 
 # problem build
 #problem = MPVCA(ncon = 4)
@@ -260,4 +254,4 @@ for i in 1:ntests
     end
 end
 
-savefig("/home/albertodm/Documents/Bazinga.jl/demo/data/" * filename * ".pdf")
+savefig(foldername * filename * ".pdf")

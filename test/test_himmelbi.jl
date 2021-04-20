@@ -1,7 +1,7 @@
 using OptiMo, Bazinga
-using NLPModels, NLPModelsIpopt, CUTEst
-using DataFrames, Query, CSV
-using Printf
+using NLPModelsIpopt, CUTEst
+using DataFrames, Query
+using CSV, Printf
 
 data = DataFrame();
 

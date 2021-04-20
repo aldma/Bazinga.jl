@@ -1,7 +1,8 @@
 using OptiMo, Bazinga
-using CUTEst, NLPModels, NLPModelsIpopt
+using CUTEst, NLPModelsIpopt
 using CSV, Printf
 using DataFrames, Query
+using BenchmarkProfiles
 
 problems = CUTEst.select( min_var=1, max_var=100, min_con=1, max_con=100 )
 nprob = length( problems )
@@ -22,7 +23,7 @@ alpx = Bazinga.ALPX(  verbose=false,
 problem = problems[2]
 nlp = CUTEstModel( problem )
 out = ipopt( nlp, tol=1e-3 )
-lprob = NLPOptiModel( nlp )
+prob = NLPOptiModel( nlp )
 out = alpx( prob )
 finalize( nlp )
 
@@ -79,9 +80,15 @@ data_solved_ipopt = data_ipopt |> @filter(_.solved == 1) |> DataFrame
 n_solved_ipopt = size( data_solved_ipopt, 1 )
 @printf(" IPOPT    %4.1f/100 first order\n", 100*n_solved_ipopt/n_tot)
 
+# store results
 inttol = -Int(log10(TOL_OPTIM))
-foldername = "/home/albertodm/Documents/"
+foldername = "/home/alberto/Documents/"
 filename = "cutest_" * "alpx" * "_$(inttol).csv"
 CSV.write( foldername * "Bazinga.jl/test/data/" * filename, data_alpx, header=false )
 filename = "cutest_" * "ipopt" * "_$(inttol).csv"
 CSV.write( foldername * "Bazinga.jl/test/data/" * filename, data_ipopt, header=false )
+
+# plot profiles
+cost(data) = data.time + Inf .* (data.solved .== 0)
+T = [cost(data_ipopt) cost(data_alpx)]
+performance_profile(T, ["IPOPT","ALPX"],title="CUTEst, ϵ=$TOL_OPTIM")
