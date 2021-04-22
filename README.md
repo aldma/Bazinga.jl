@@ -1,7 +1,7 @@
 # Bazinga.jl
 Toolbox for constrained structured optimization in [Julia](https://julialang.org/)
 
-What for?
+Why?
 -----------
 Robust, easy to use, yet efficient and fast numerical optimization algorithms designed to find (local) solutions of mathematical optimization problems of the form
 
@@ -23,10 +23,4 @@ The problem terms are accessed through some oracles:
 
 License
 ----------
-The Bazinga.jl package is licensed under the MIT "Expat" License. We provide this program in the hope that it may be useful to others, and we would very much like to hear about your experience with it. If you found it helpful, we encourage you to [get in touch](mailto:aldmarchi@gmail.com) with us.
-
-See also
-----------
-* [ProximalAlgorithms.jl](https://github.com/kul-forbes/ProximalAlgorithms.jl)
-* [JuliaSmoothOptimizers](https://github.com/JuliaSmoothOptimizers)
-* [ALGENCAN](https://www.ime.usp.br/~egbirgin/tango/codes.php#algencan)
+The Bazinga.jl package is licensed under the MIT License. We provide this program in the hope that it may be useful to others, and we would very much like to hear about your experience with it. If you found it helpful, we encourage you to [get in touch](mailto:aldmarchi@gmail.com) with us.
