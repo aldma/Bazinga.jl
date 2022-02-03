@@ -34,7 +34,7 @@
     [Hoh09]     Hoheisel, "Mathematical Programs with Vanishing Constraints",
                 PhD thesis, University of Würzburg, 2009.
 """
-using Revise
+
 using ProximalOperators
 using LinearAlgebra
 using Bazinga
@@ -59,24 +59,6 @@ function ProximalOperators.prox!(y, g::NonsmoothCostMPVCA, x, gamma)
     return zero(eltype(x))
 end
 
-struct NonsmoothCostMPVCApoly <: ProximalOperators.ProximableFunction end
-function ProximalOperators.prox!(y, g::NonsmoothCostMPVCApoly, x, gamma)
-    c = 3.0
-    if x[1] ≥ c || x[2] ≥ c
-        y .= max.(0.0, x)
-    elseif x[1] + x[2] ≥ c
-        y .= max.(0.0, x)
-    elseif x[2] - x[1] ≥ c
-        y .= [0.0; c]
-    elseif x[1] - x[2] ≥ c
-        y .= [c; 0.0]
-    else
-        y[1] = min(c, (c+x[1]-x[2])/2.0)
-        y[2] = min(c, (c-x[1]+x[2])/2.0)
-    end
-    return zero(eltype(x))
-end
-
 struct ConstraintMPVCA <: SmoothFunction end
 function Bazinga.eval!(cx, c::ConstraintMPVCA, x)
     cx .= [x[1]; x[1]+x[2]-5*sqrt(2); x[2]; x[1]+x[2]-5]
@@ -98,15 +80,13 @@ end
 T = Float64
 f = SmoothCostMPVCA( T.([4; 2]))
 g = NonsmoothCostMPVCA()
-#g = NonsmoothCostMPVCApoly()
 c = ConstraintMPVCA()
 D = SetMPVCA()
 
 x0 = ones(T,2)
-y0 = ones(T,4)
+y0 = zeros(T,4)
 
 out = Bazinga.alps(f, g, c, D, x0, y0)
-
 
 ###############################################################################
 ###############################################################################
@@ -116,13 +96,14 @@ using Printf
 using Plots
 
 foldername = "/home/albertodm/Documents/Bazinga.jl/demo/data/"
+filename = "mpvca_grid"
 
 xmin = -5.0
 xmax = 20.0
 
 data = DataFrame()
 
-xgrid = [(i, j) for i = xmin:0.5:xmax, j = xmin:0.5:xmax];
+xgrid = [(i, j) for i = xmin:0.25:xmax, j = xmin:0.25:xmax];
 xgrid = xgrid[:];
 ntests = length(xgrid)
 
@@ -143,7 +124,6 @@ for i = 1:ntests
 end
 @printf "\n"
 
-filename = "mpvca_grid"
 #CSV.write(foldername * filename * ".csv", data, header=false)
 
 ################################################################################
@@ -153,8 +133,6 @@ global c_00 = 0
 global c_05 = 0
 global c_11 = 0
 global c_un = 0
-
-#pyplot()
 
 feasset = Shape([(0.0,xmax),(0.0,5*sqrt(2)),(5*sqrt(2),0.0),(xmax,0.0),(xmax,xmax),(0.0,xmax)])
 hplt = plot(feasset, color=plot_color(:grey,0.4), linewidth=0, legend = false)
