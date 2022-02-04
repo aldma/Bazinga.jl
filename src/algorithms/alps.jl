@@ -38,8 +38,8 @@ function alps(
     theta = 0.8
     kappa = 0.5
     kappaepsilon = 0.1
-    epsilonmin = 0.1 * tol_dual
-    mumin = 1e-9
+    epsilonmin = tol_dual
+    mumin = 1e-8
 
     default_stop_criterion(tol_prim, tol_dual, res_prim, res_dual) = (res_prim <= tol_prim) && (res_dual <= tol_dual)
     default_penalty_parameter!(mu, cx, proj_cx, objx) = begin
@@ -80,6 +80,7 @@ function alps(
         @info "initial primal residual $(norm_res_prim)"
         @info "initial inner tolerance $(epsilon)"
     end
+    subsolver_maxit = 1_000
 
     ###############################################################################
     while !(solved || tired)
@@ -90,7 +91,7 @@ function alps(
         epsilon *= kappaepsilon
         epsilon = max(epsilon, epsilonmin)
         # solve subproblem
-        subsolver = default_subsolver(tol=epsilon, verbose=verbose, freq=100, minimum_gamma=1e-12)
+        subsolver = default_subsolver(tol=epsilon, verbose=verbose, maxit=subsolver_maxit, freq=subsolver_maxit, minimum_gamma=1e-12)
         AugLagUpdate!(al, mu, y)
         sub_sol, sub_it = subsolver(f=al, g=g, x0=x)
         x .= sub_sol
