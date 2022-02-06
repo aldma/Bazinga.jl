@@ -94,6 +94,7 @@ out = Bazinga.alps(f, g, c, D, x0, y0)
 using DataFrames
 using Printf
 using Plots
+using CSV
 
 foldername = "/home/albertodm/Documents/Bazinga.jl/demo/data/"
 filename = "mpvca_grid"
@@ -124,7 +125,7 @@ for i = 1:ntests
 end
 @printf "\n"
 
-#CSV.write(foldername * filename * ".csv", data, header=false)
+CSV.write(foldername * filename * ".csv", data, header=false)
 
 ################################################################################
 tolx = 1e-3

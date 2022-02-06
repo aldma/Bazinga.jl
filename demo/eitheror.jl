@@ -68,7 +68,6 @@ end
 
 struct SetEITHEROR <: ClosedSet end
 function Bazinga.proj!(z, D::SetEITHEROR, x)
-    #x .= max.(-5, min.(x, 5))
     Bazinga.project_onto_EITHEROR_set!(@view(z[1:2]), @view(x[1:2]))
     Bazinga.project_onto_EITHEROR_set!(@view(z[3:4]), @view(x[3:4]))
     return nothing
@@ -81,12 +80,16 @@ function Bazinga.proj!(z, D::SetXOR, x)
 end
 
 # iter
+problem_name = "xor"
 T = Float64
 f = SmoothCostOR()
 g = NonsmoothCostOR()
 c = ConstraintOR()
-#D = SetEITHEROR()
-D = SetXOR()
+if problem_name == "eitheror"
+    D = SetEITHEROR()
+else
+    D = SetXOR()
+end
 
 x0 = ones(T,2)
 y0 = zeros(T,4)
@@ -100,9 +103,10 @@ out = Bazinga.alps(f, g, c, D, x0, y0)
 using DataFrames
 using Printf
 using Plots
+using CSV
 
 foldername = "/home/albertodm/Documents/Bazinga.jl/demo/data/"
-filename = "eitheror_grid"
+filename = problem_name * "_grid"
 
 xmin = -4.0
 xmax =  8.0
@@ -130,7 +134,7 @@ for i = 1:ntests
 end
 @printf "\n"
 
-#CSV.write(foldername * filename * ".csv", data, header = false)
+CSV.write(foldername * filename * ".csv", data, header = false)
 
 ################################################################################
 tolx = 1e-3

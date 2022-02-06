@@ -30,6 +30,7 @@ function alps(
     maxit::Int = 100,
     verbose::Bool = false,
     dual_safeguard::Function = default_dual_safeguard!,
+    subsolver_maxit::Int = 1_000,
 )
     start_time = time()
     T = eltype(x0)
@@ -38,10 +39,8 @@ function alps(
     theta = 0.8
     kappa = 0.5
     kappaepsilon = 0.1
-    epsilonmin = tol_dual
     mumin = 1e-8
 
-    default_stop_criterion(tol_prim, tol_dual, res_prim, res_dual) = (res_prim <= tol_prim) && (res_dual <= tol_dual)
     default_penalty_parameter!(mu, cx, proj_cx, objx) = begin
         distsq = 0.5 * (cx - proj_cx).^2
         mu .= max.(1, distsq) ./ max(1, abs(objx))
@@ -49,7 +48,6 @@ function alps(
         return nothing
     end
     default_subsolver = ProximalAlgorithms.PANOCplus
-    stop_criterion = default_stop_criterion
 
     ############################################################################
     # initialize
@@ -80,7 +78,6 @@ function alps(
         @info "initial primal residual $(norm_res_prim)"
         @info "initial inner tolerance $(epsilon)"
     end
-    subsolver_maxit = 1_000
 
     ###############################################################################
     while !(solved || tired)
@@ -89,7 +86,7 @@ function alps(
         dual_safeguard(y)
         # inner tolerance
         epsilon *= kappaepsilon
-        epsilon = max(epsilon, epsilonmin)
+        epsilon = max(epsilon, tol_dual)
         # solve subproblem
         subsolver = default_subsolver(tol=epsilon, verbose=verbose, maxit=subsolver_maxit, freq=subsolver_maxit, minimum_gamma=1e-12)
         AugLagUpdate!(al, mu, y)
@@ -112,7 +109,7 @@ function alps(
         norm_res_prim_old = norm_res_prim
         norm_res_prim = norm(cx .- s, Inf)
 
-        solved = stop_criterion(tol_prim, tol_dual, norm_res_prim, epsilon)
+        solved = sub_it < subsolver_maxit && epsilon <= tol_dual && norm_res_prim <= tol_prim
         tired = tot_it > maxit
     end
     elapsed_time = time() - start_time

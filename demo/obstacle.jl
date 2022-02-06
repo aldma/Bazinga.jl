@@ -105,36 +105,40 @@ function Bazinga.proj!(z, D::SetOBSTxy, x)
 end
 
 ## iter
+problem_name = "obstacle_xy"
 N = 64 # discretization intervals
+tol = 1e-4 # tolerance
+sub_maxit = 10_000 # subsolver max iterations
+
+foldername = "/home/albertodm/Documents/Bazinga.jl/demo/data/"
+filename = problem_name * "_grid"
+data = DataFrame()
+
 T = Float64
-TOL = T(1e-6)
-
 f = SmoothCostOBST( N )
-g = NonsmoothCostOBST( N )
-c = ConstraintOBST( N )
-D = SetOBST()
+if problem_name == "obstacle"
+    g = NonsmoothCostOBST( N )
+    c = ConstraintOBST( N )
+    D = SetOBST()
+    x0 = ones(T,3*N)
+    y0 = zeros(T,N)
+else
+    g = NonsmoothCostOBSTxy( N )
+    c = ConstraintOBSTxy( N )
+    D = SetOBSTxy( N )
+    x0 = ones(T,2*N)
+    y0 = zeros(T,2*N)
+end
 
-x0 = ones(T,3*N)
-y0 = zeros(T,N)
-
-out = Bazinga.alps(f, g, c, D, x0, y0, tol = TOL, verbose=true)
+out = Bazinga.alps(f, g, c, D, x0, y0, tol=tol, subsolver_maxit = sub_maxit)
 
 xsol = out[1]
-ysol = out[2]
-tot_it = out[3]
-tot_inner_it = out[4]
+objx = f(xsol)
+cx = similar(y0)
+eval!(cx, c, xsol)
+px = similar(y0)
+proj!(px, D, cx)
+distcx = norm(cx - px, 2)
+push!(data, (N=N, objective = objx, distcx = distcx, iter=out[3], sub_iter=out[4], time=out[5]))
 
-
-
-g_xy = NonsmoothCostOBSTxy( N )
-c_xy = ConstraintOBSTxy( N )
-D_xy = SetOBSTxy( N )
-x0_xy = x0[1:2*N]
-y0_xy = zeros(T,2*N)
-
-out_xy = Bazinga.alps(f, g_xy, c_xy, D_xy, x0_xy, y0_xy, tol = TOL, verbose=true)
-
-xsol_xy = out_xy[1]
-ysol_xy = out_xy[2]
-tot_it_xy = out_xy[3]
-tot_inner_it_xy = out_xy[4]
+CSV.write(foldername * filename * ".csv", data, header = false)
