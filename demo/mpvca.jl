@@ -35,191 +35,98 @@
                 PhD thesis, University of Würzburg, 2009.
 """
 
-using Bazinga, OptiMo
-using Random, LinearAlgebra
-using DataFrames, CSV
-using Printf, Plots
+using ProximalOperators
+using LinearAlgebra
+using Bazinga
 
 ###################################################################################
 # problem definition
 ###################################################################################
-mutable struct MPVCA <: AbstractOptiModel
-    meta::OptiModelMeta
+struct SmoothCostMPVCA <: ProximalOperators.ProximableFunction
+    c::AbstractVector
+end
+function (f::SmoothCostMPVCA)(x)
+    return dot(f.c, x)
+end
+function ProximalOperators.gradient!(dfx, f::SmoothCostMPVCA, x)
+    dfx .= f.c
+    return dot(f.c, x)
 end
 
-function MPVCA(; ncon::Int = 4)
-    @assert 4 <= ncon <= 5
-    name = "mpvca" * "_$ncon"
-    meta = OptiModelMeta(2, ncon, x0 = [5.0; 5.5], name = name)
-    return MPVCA(meta)
+struct NonsmoothCostMPVCA <: ProximalOperators.ProximableFunction end
+function ProximalOperators.prox!(y, g::NonsmoothCostMPVCA, x, gamma)
+    y .= max.(0, x)
+    return zero(eltype(x))
 end
 
-# necessary methods:
-# obj, grad!: cons!, jprod!, jtprod!, proj!, prox!, objprox!
-function OptiMo.obj(prob::MPVCA, x::AbstractVector)
-    OptiMo.@lencheck prob.meta.nvar x
-    return 4 * x[1] + 2 * x[2]
+struct ConstraintMPVCA <: SmoothFunction end
+function Bazinga.eval!(cx, c::ConstraintMPVCA, x)
+    cx .= [x[1]; x[1]+x[2]-5*sqrt(2); x[2]; x[1]+x[2]-5]
+    return nothing
 end
-
-function OptiMo.grad!(prob::MPVCA, x::AbstractVector, dfx::AbstractVector)
-    OptiMo.@lencheck prob.meta.nvar x
-    dfx .= [4; 2]
+function Bazinga.jtprod!(jtv, c::ConstraintMPVCA, x, v)
+    jtv .= [v[1]+v[2]+v[4]; v[2]+v[3]+v[4]]
     return nothing
 end
 
-function OptiMo.cons!(prob::MPVCA, x::AbstractVector, cx::AbstractVector)
-    OptiMo.@lencheck prob.meta.nvar x
-    OptiMo.@lencheck prob.meta.ncon cx
-    cx[1:4] .= [x[1]; x[2]; x[1] + x[2] - 5.0 * sqrt(2.0); x[1] + x[2] - 5.0]
-    if prob.meta.ncon > 4
-        cx[5] = x[1] + x[2] - 3.0
-    end
+struct SetMPVCA <: ClosedSet end
+function Bazinga.proj!(z, D::SetMPVCA, x)
+    Bazinga.project_onto_VC_set!(@view(z[1:2]), @view(x[1:2]))
+    Bazinga.project_onto_VC_set!(@view(z[3:4]), @view(x[3:4]))
     return nothing
 end
 
-function OptiMo.jprod!(
-    prob::MPVCA,
-    x::AbstractVector,
-    v::AbstractVector,
-    Jv::AbstractVector,
-)
-    OptiMo.@lencheck prob.meta.nvar x v
-    OptiMo.@lencheck prob.meta.ncon Jv
-    v12 = v[1] + v[2]
-    if prob.meta.ncon > 4
-        Jv .= [v[1]; v[2]; v12; v12; v12]
-    else
-        Jv .= [v[1]; v[2]; v12; v12]
-    end
-    return nothing
-end
+# iter
+T = Float64
+f = SmoothCostMPVCA( T.([4; 2]))
+g = NonsmoothCostMPVCA()
+c = ConstraintMPVCA()
+D = SetMPVCA()
 
-function OptiMo.jtprod!(
-    prob::MPVCA,
-    x::AbstractVector,
-    v::AbstractVector,
-    Jtv::AbstractVector,
-)
-    OptiMo.@lencheck prob.meta.nvar x Jtv
-    OptiMo.@lencheck prob.meta.ncon v
-    if prob.meta.ncon > 4
-        v345 = v[3] + v[4] + v[5]
-    else
-        v345 = v[3] + v[4]
-    end
-    Jtv .= [v[1] + v345; v[2] + v345]
-    return nothing
-end
+x0 = ones(T,2)
+y0 = zeros(T,4)
 
-function OptiMo.prox!(prob::MPVCA, x::AbstractVector, a::Real, z::AbstractVector)
-    OptiMo.@lencheck prob.meta.nvar x z
-    z .= max.(0.0, x)
-    return nothing
-end
-
-function OptiMo.objprox!(prob::MPVCA, x::AbstractVector, a::Real, z::AbstractVector)
-    OptiMo.@lencheck prob.meta.nvar x z
-    OptiMo.prox!(prob, x, a, z)
-    return 0.0
-end
-
-function OptiMo.proj!(prob::MPVCA, cx::AbstractVector, px::AbstractVector)
-    OptiMo.@lencheck prob.meta.ncon cx px
-    # vanishing constraint
-    px[1] = max(0.0, cx[1])
-    px[3] = cx[3]
-    if (px[1] + px[3] < 0)
-        px[1] = 0.0
-    else
-        px[3] = max(px[3], 0.0)
-    end
-    # vanishing constraint
-    px[2] = max(0.0, cx[2])
-    px[4] = cx[4]
-    if (px[2] + px[4] < 0)
-        px[2] = 0.0
-    else
-        px[4] = max(px[4], 0.0)
-    end
-    # inequality (ncon == 5)
-    if prob.meta.ncon > 4
-        px[5] = max(0.0, cx[5])
-    end
-    return nothing
-end
+out = Bazinga.alps(f, g, c, D, x0, y0, verbose=true)
 
 ###############################################################################
 ###############################################################################
 ###############################################################################
-#=function MPVCA()
-    ncon = 4
-    name = "mpvca" * "_5g"
-    meta = OptiModelMeta(2, ncon, x0 = [5.0; 5.0], name = name)
-    return MPVCA(meta)
-end
-function OptiMo.prox!(prob::MPVCA, x::AbstractVector, a::Real, z::AbstractVector)
-    OptiMo.@lencheck prob.meta.nvar x z
-    c = 3.0
-    @assert(c ≥ 0.0)
-    if x[1] ≥ c || x[2] ≥ c
-        z .= max.(0.0, x)
-    elseif x[1] + x[2] ≥ c
-        z .= max.(0.0, x)
-    elseif x[2] - x[1] ≥ c
-        z .= [0.0; c]
-    elseif x[1] - x[2] ≥ c
-        z .= [c; 0.0]
-    else
-        z[1] = min(c, (c+x[1]-x[2])/2.0)
-        z[2] = min(c, (c-x[1]+x[2])/2.0)
-    end
-    return nothing
-end
-=#
+using DataFrames
+using Printf
+using Plots
+using CSV
 
-###############################################################################
-###############################################################################
-###############################################################################
-foldername = "/home/alberto/Documents/Bazinga.jl/demo/data/"
-
-# problem build
-#problem = MPVCA(ncon = 4)
-problem = MPVCA(ncon = 5)
-#problem = MPVCA()
-
-# solver build
-solver =
-    Bazinga.ALPX(max_iter = 10, max_sub_iter = 1000, verbose = false, subsolver = :zerofpr)
-
-R = eltype(problem.meta.x0)
-nvar = problem.meta.nvar
+problem_name = "mpvca"
+filename = problem_name * "_grid"
+filepath = joinpath(@__DIR__, "results", filename)
 
 xmin = -5.0
 xmax = 20.0
 
 data = DataFrame()
 
-xgrid = [(i, j) for i = xmin:0.5:xmax, j = xmin:0.5:xmax];
+xgrid = [(i, j) for i = xmin:0.25:xmax, j = xmin:0.25:xmax];
 xgrid = xgrid[:];
 ntests = length(xgrid)
 
 for i = 1:ntests
     x0 = [xgrid[i][1]; xgrid[i][2]]
+    y0 = zeros(T,4)
 
-    out = solver(problem, x0 = x0)
+    out = Bazinga.alps(f, g, c, D, x0, y0)
 
     @printf "."
     if mod(i, 50) == 0
         @printf "\n"
     end
 
-    push!(data, (id = i, xi_1 = x0[1], xi_2 = x0[2], xf_1 = out.x[1], xf_2 = out.x[2], iter=out.iterations, time=out.time))
+    xsol = out[1]
+    push!(data, (id = i, xi_1 = x0[1], xi_2 = x0[2], xf_1 = xsol[1], xf_2 = xsol[2], iter=out[3], sub_iter=out[4], time=out[5]))
 
 end
 @printf "\n"
 
-filename = problem.meta.name * "_grid"
-CSV.write(foldername * filename * ".csv", data, header=false)
+CSV.write(filepath * ".csv", data, header=false)
 
 ################################################################################
 tolx = 1e-3
@@ -228,8 +135,6 @@ global c_00 = 0
 global c_05 = 0
 global c_11 = 0
 global c_un = 0
-
-pyplot()
 
 feasset = Shape([(0.0,xmax),(0.0,5*sqrt(2)),(5*sqrt(2),0.0),(xmax,0.0),(xmax,xmax),(0.0,xmax)])
 hplt = plot(feasset, color=plot_color(:grey,0.4), linewidth=0, legend = false)
@@ -254,4 +159,4 @@ for i in 1:ntests
     end
 end
 
-savefig(foldername * filename * ".pdf")
+savefig(filepath * ".pdf")

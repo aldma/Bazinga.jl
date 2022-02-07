@@ -29,139 +29,87 @@
                 arXiv:1809.02388v1 [math.OC] 7 Sep 2018
 """
 
-using Bazinga, OptiMo
-using Random, LinearAlgebra
-using DataFrames, CSV
-using Printf, Plots
+using ProximalOperators
+using LinearAlgebra
+using Bazinga
 
 ###################################################################################
 # problem definition
 ###################################################################################
-mutable struct EITHEROR <: AbstractOptiModel
-    meta::OptiModelMeta
+struct SmoothCostOR <: ProximalOperators.ProximableFunction end
+function (f::SmoothCostOR)(x)
+    return (x[1] - 8)^2 + (x[2] + 3)^2
 end
-
-function EITHEROR()
-    name = "eitheror"
-    meta = OptiModelMeta(2, 4, x0 = zeros(Float64, 2), name = name)
-    return EITHEROR(meta)
-end
-
-# necessary methods:
-# obj, grad!: cons!, jprod!, jtprod!, proj!, prox!, objprox!
-function OptiMo.obj(prob::EITHEROR, x::AbstractVector)
-    OptiMo.@lencheck prob.meta.nvar x
+function ProximalOperators.gradient!(dfx, f::SmoothCostOR, x)
+    dfx[1] = 2 * (x[1] - 8)
+    dfx[2] = 2 * (x[2] + 3)
     return (x[1] - 8)^2 + (x[2] + 3)^2
 end
 
-function OptiMo.grad!(prob::EITHEROR, x::AbstractVector, dfx::AbstractVector)
-    OptiMo.@lencheck prob.meta.nvar x
-    dfx .= [2 * (x[1] - 8); 2 * (x[2] + 3)]
+struct NonsmoothCostOR <: ProximalOperators.ProximableFunction end
+function ProximalOperators.prox!(y, g::NonsmoothCostOR, x, gamma)
+    y .= max.(-10, min.(x, 10))
+    return zero(eltype(x))
+end
+
+struct ConstraintOR <: SmoothFunction end
+function Bazinga.eval!(cx, c::ConstraintOR, x)
+    cx[1] = 2 * x[2] - x[1] - 4
+    cx[2] = 2 - x[1]
+    cx[3] = 4 * x[2] - x[1]^2
+    cx[4] = 10 - (x[1] - 3)^2 - (x[2] - 1)^2
+    return nothing
+end
+function Bazinga.jtprod!(jtv, c::ConstraintOR, x, v)
+    jtv[1] = - v[1] - v[2] - 2 * x[1] * v[3] + 2 * (3 - x[1]) * v[4]
+    jtv[2] = 2 * v[1] + 4 * v[3] + 2 * (1 - x[2]) * v[4]
     return nothing
 end
 
-function OptiMo.cons!(prob::EITHEROR, x::AbstractVector, cx::AbstractVector)
-    OptiMo.@lencheck prob.meta.nvar x
-    OptiMo.@lencheck prob.meta.ncon cx
-    cx .= [
-        x[1] - 2 * x[2] + 4
-        x[1]^2 - 4 * x[2]
-        x[1] - 2
-        (x[1] - 3)^2 + (x[2] - 1)^2 - 10
-    ]
+struct SetEITHEROR <: ClosedSet end
+function Bazinga.proj!(z, D::SetEITHEROR, x)
+    Bazinga.project_onto_EITHEROR_set!(@view(z[1:2]), @view(x[1:2]))
+    Bazinga.project_onto_EITHEROR_set!(@view(z[3:4]), @view(x[3:4]))
+    return nothing
+end
+struct SetXOR <: ClosedSet end
+function Bazinga.proj!(z, D::SetXOR, x)
+    Bazinga.project_onto_XOR_set!(@view(z[1:2]), @view(x[1:2]))
+    Bazinga.project_onto_XOR_set!(@view(z[3:4]), @view(x[3:4]))
     return nothing
 end
 
-function OptiMo.jprod!(
-    prob::EITHEROR,
-    x::AbstractVector,
-    v::AbstractVector,
-    Jv::AbstractVector,
-)
-    OptiMo.@lencheck prob.meta.nvar x v
-    OptiMo.@lencheck prob.meta.ncon Jv
-    Jv .= [
-        v[1] - 2 * v[2]
-        2 * x[1] * v[1] - 4 * v[2]
-        v[1]
-        2 * (x[1] - 3) * v[1] + 2 * (x[2] - 1) * v[2]
-    ]
-    return nothing
+# iter
+problem_name = "eitheror"
+T = Float64
+f = SmoothCostOR()
+g = NonsmoothCostOR()
+c = ConstraintOR()
+if problem_name == "eitheror"
+    D = SetEITHEROR()
+else
+    D = SetXOR()
 end
 
-function OptiMo.jtprod!(
-    prob::EITHEROR,
-    x::AbstractVector,
-    v::AbstractVector,
-    Jtv::AbstractVector,
-)
-    OptiMo.@lencheck prob.meta.nvar x Jtv
-    OptiMo.@lencheck prob.meta.ncon v
-    Jtv .= [
-        v[1] + 2 * x[1] * v[2] + v[3] + 2 * (x[1] - 3) * v[4]
-        -2 * v[1] - 4 * v[2] + 2 * (x[2] - 1) * v[4]
-    ]
-    return nothing
-end
+x0 = ones(T,2)
+y0 = zeros(T,4)
 
-function OptiMo.prox!(prob::EITHEROR, x::AbstractVector, a::Real, z::AbstractVector)
-    OptiMo.@lencheck prob.meta.nvar x z
-    z .= x
-    return nothing
-end
+out = Bazinga.alps(f, g, c, D, x0, y0, verbose=true)
 
-function OptiMo.objprox!(prob::EITHEROR, x::AbstractVector, a::Real, z::AbstractVector)
-    OptiMo.@lencheck prob.meta.nvar x z
-    z .= x
-    return 0.0
-end
 
-function OptiMo.proj!(prob::EITHEROR, cx::AbstractVector, px::AbstractVector)
-    OptiMo.@lencheck prob.meta.ncon cx px
-    if cx[1] > 0 && cx[3] > 0
-        if cx[1] > cx[3]
-            px[1] = cx[1]
-            px[3] = 0
-        else
-            px[1] = 0
-            px[3] = cx[3]
-        end
-    else
-        px[1] = cx[1]
-        px[3] = cx[3]
-    end
-    if cx[2] > 0 && cx[4] > 0
-        if cx[2] > cx[4]
-            px[2] = cx[2]
-            px[4] = 0
-        else
-            px[2] = 0
-            px[4] = cx[4]
-        end
-    else
-        px[2] = cx[2]
-        px[4] = cx[4]
-    end
-    #if cx[1] > 0 && cx[3] > 0
-    # ...
-    return nothing
-end
+###############################################################################
+###############################################################################
+###############################################################################
+using DataFrames
+using Printf
+using Plots
+using CSV
 
-# problem build
-problem = EITHEROR()
-
-foldername = "/home/alberto/Documents/Bazinga.jl/demo/data/"
-filename = problem.meta.name * "_grid"
-
-# solver build
-solver =
-    Bazinga.ALPX(max_iter = 50, max_sub_iter = 1000, verbose = false, subsolver = :zerofpr)
-
-R = eltype(problem.meta.x0)
-nvar = problem.meta.nvar
+filename = problem_name * "_grid"
+filepath = joinpath(@__DIR__, "results", filename)
 
 xmin = -4.0
-xmax = 8.0
+xmax =  8.0
 
 data = DataFrame()
 
@@ -169,37 +117,24 @@ xgrid = [(i, j) for i = xmin:0.25:xmax, j = xmin:0.25:xmax];
 xgrid = xgrid[:];
 ntests = length(xgrid)
 
-x0 = [xgrid[1][1]; xgrid[1][2]]
-out = solver(problem, x0 = x0)
-
 for i = 1:ntests
     x0 = [xgrid[i][1]; xgrid[i][2]]
+    y0 = zeros(T,4)
 
-    out = solver(problem, x0 = x0)
+    out = Bazinga.alps(f, g, c, D, x0, y0)
 
     @printf "."
     if mod(i, 50) == 0
         @printf "\n"
     end
 
-    push!(
-        data,
-        (
-            id = i,
-            xi_1 = x0[1],
-            xi_2 = x0[2],
-            xf_1 = out.x[1],
-            xf_2 = out.x[2],
-            iter = out.iterations,
-            time = out.time,
-            solved = out.status == :first_order ? 1 : 0,
-        ),
-    )
+    xsol = out[1]
+    push!(data, (id = i, xi_1 = x0[1], xi_2 = x0[2], xf_1 = xsol[1], xf_2 = xsol[2], iter=out[3], sub_iter=out[4], time=out[5]))
 
 end
 @printf "\n"
 
-CSV.write(foldername * filename * ".csv", data, header = false)
+CSV.write(filepath * ".csv", data, header = false)
 
 ################################################################################
 tolx = 1e-3
@@ -207,8 +142,6 @@ tolx = 1e-3
 global c22 = 0
 global c44 = 0
 global cun = 0
-
-pyplot()
 
 pts = [(0.0, 0.0)]
 rad = sqrt(10.0)
@@ -266,4 +199,4 @@ for i = 1:ntests
         @printf "(%6.4f,%6.4f) from (%6.4f,%6.4f)\n" xf[1] xf[2] xi[1] xi[2]
     end
 end
-savefig(foldername * filename * ".pdf")
+savefig(filepath * ".pdf")
