@@ -80,7 +80,7 @@ function Bazinga.proj!(z, D::SetXOR, x)
 end
 
 # iter
-problem_name = "xor"
+problem_name = "eitheror"
 T = Float64
 f = SmoothCostOR()
 g = NonsmoothCostOR()
@@ -94,7 +94,7 @@ end
 x0 = ones(T,2)
 y0 = zeros(T,4)
 
-out = Bazinga.alps(f, g, c, D, x0, y0)
+out = Bazinga.alps(f, g, c, D, x0, y0, verbose=true)
 
 
 ###############################################################################
@@ -105,8 +105,8 @@ using Printf
 using Plots
 using CSV
 
-foldername = "/home/albertodm/Documents/Bazinga.jl/demo/data/"
 filename = problem_name * "_grid"
+filepath = joinpath(@__DIR__, "results", filename)
 
 xmin = -4.0
 xmax =  8.0
@@ -134,7 +134,7 @@ for i = 1:ntests
 end
 @printf "\n"
 
-CSV.write(foldername * filename * ".csv", data, header = false)
+CSV.write(filepath * ".csv", data, header = false)
 
 ################################################################################
 tolx = 1e-3
@@ -199,4 +199,4 @@ for i = 1:ntests
         @printf "(%6.4f,%6.4f) from (%6.4f,%6.4f)\n" xf[1] xf[2] xi[1] xi[2]
     end
 end
-savefig(foldername * filename * ".pdf")
+savefig(filepath * ".pdf")

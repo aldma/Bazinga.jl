@@ -4,7 +4,6 @@ using LinearAlgebra
 using ProximalOperators
 import ProximalOperators: prox!, gradient!
 using ProximalAlgorithms
-using SolverCore
 
 abstract type SmoothFunction <: ProximableFunction end
 abstract type ClosedSet <: ProximableFunction end
@@ -20,6 +19,7 @@ include("projections/vanishingConstraints.jl")
 
 # utilities
 include("utilities/auglagfun.jl")
+include("utilities/nonsmoothcostfun.jl")
 
 # algorithms
 include("algorithms/alps.jl")

@@ -86,7 +86,7 @@ D = SetMPVCA()
 x0 = ones(T,2)
 y0 = zeros(T,4)
 
-out = Bazinga.alps(f, g, c, D, x0, y0)
+out = Bazinga.alps(f, g, c, D, x0, y0, verbose=true)
 
 ###############################################################################
 ###############################################################################
@@ -96,8 +96,9 @@ using Printf
 using Plots
 using CSV
 
-foldername = "/home/albertodm/Documents/Bazinga.jl/demo/data/"
-filename = "mpvca_grid"
+problem_name = "mpvca"
+filename = problem_name * "_grid"
+filepath = joinpath(@__DIR__, "results", filename)
 
 xmin = -5.0
 xmax = 20.0
@@ -125,7 +126,7 @@ for i = 1:ntests
 end
 @printf "\n"
 
-CSV.write(foldername * filename * ".csv", data, header=false)
+CSV.write(filepath * ".csv", data, header=false)
 
 ################################################################################
 tolx = 1e-3
@@ -158,4 +159,4 @@ for i in 1:ntests
     end
 end
 
-savefig(foldername * filename * ".pdf")
+savefig(filepath * ".pdf")

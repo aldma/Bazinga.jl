@@ -105,13 +105,14 @@ function Bazinga.proj!(z, D::SetOBSTxy, x)
 end
 
 ## iter
-problem_name = "obstacle_xy"
+problem_name = "obstacle"
 N = 64 # discretization intervals
 tol = 1e-4 # tolerance
 sub_maxit = 10_000 # subsolver max iterations
 
-foldername = "/home/albertodm/Documents/Bazinga.jl/demo/data/"
-filename = problem_name * "_grid"
+filename = problem_name
+filepath = joinpath(@__DIR__, "results", filename)
+
 data = DataFrame()
 
 T = Float64
@@ -141,4 +142,4 @@ proj!(px, D, cx)
 distcx = norm(cx - px, 2)
 push!(data, (N=N, objective = objx, distcx = distcx, iter=out[3], sub_iter=out[4], time=out[5]))
 
-CSV.write(foldername * filename * ".csv", data, header = false)
+CSV.write(filepath * ".csv", data, header = false)
