@@ -145,10 +145,10 @@ for i in 1:ntests
     xi = [data[i,2]; data[i,3]]
     xf = [data[i,4]; data[i,5]]
 
-    if norm(xf,Inf) <= tolx
+    if norm(xf) <= tolx
         global c_00 += 1
         scatter!(hplt, [xi[1]], [xi[2]], color=:blue, marker=:circle, markerstrokewidth=0, legend = false)
-    elseif norm(xf - [0.0;5.0],Inf) <= tolx
+    elseif norm(xf - [0.0;5.0]) <= tolx
         global c_05 += 1
         scatter!(hplt, [xi[1]], [xi[2]], color=:red, marker=:diamond, markerstrokewidth=0, legend = false)
     elseif xf[1] >= 0 && xf[2] >= 0 && xf[1]+xf[2] <= 3
