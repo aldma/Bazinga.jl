@@ -1,25 +1,26 @@
 # Bazinga.jl
-Toolbox for constrained structured optimization in [Julia](https://julialang.org/)
 
-Why?
+A toolbox for constrained structured optimization in Julia.
+
+## Why?
 -----------
 Robust, easy to use, yet efficient and fast numerical optimization algorithms designed to find (local) solutions of mathematical optimization problems of the form
 
 ```
-   min     f(x) + g(x)
-  x ∈ Rⁿ
-   s.t.    c(x) ∈ S
+   minimize        f(x) + g(x)
+   with respect to x ∈ Rⁿ
+   subject to      c(x) ∈ D
 ```
-where ```f(x): Rⁿ --> R``` is a smooth objective function, ```g(x): Rⁿ --> R ∪ ∞``` is a proximable objective function, ```c(x): Rⁿ --> Rᵐ``` are smooth constraint functions, and ```S ⊆ Rᵐ``` is a closed set.
+where ```f(x): Rⁿ --> R``` is a smooth objective function (locally Lipschitz continuous gradient), ```g(x): Rⁿ --> R ∪ ∞``` is a proximable objective function, ```c(x): Rⁿ --> Rᵐ``` are smooth constraint functions, and ```D ⊆ Rᵐ``` is a nonempty closed set.
 
 The problem terms are accessed through some oracles:
 
 * ```f```: function value, gradient
-* ```g```: proximal operator, function value at proximal point
+* ```g```: proximal mapping, function value at proximal point
 * ```c```: function value, Jacobian-vector product
-* ```S```: projection operator, distance function
+* ```D```: projection mapping
 
-[OptiMo.jl](https://github.com/aldma/OptiMo.jl) provides a modeling language for problems in this form, giving access to the oracles of interest.
+[ProximalOperators.jl](https://github.com/JuliaFirstOrder/ProximalOperators.jl) provides first-order primitives (gradient and proximal mapping) for modelling problems and giving access to the oracles of interest.
 
 License
 ----------
