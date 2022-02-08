@@ -172,7 +172,7 @@ for i = 1:ntests
     xi = [data[i, 2]; data[i, 3]]
     xf = [data[i, 4]; data[i, 5]]
 
-    if norm(xf - [2.0; -2.0], Inf) <= tolx
+    if norm(xf - [2.0; -2.0]) <= tolx
         global c22 += 1
         scatter!(
             hplt,
@@ -183,7 +183,7 @@ for i = 1:ntests
             markerstrokewidth = 0,
             legend = false,
         )
-    elseif norm(xf - [4.0; 4.0], Inf) <= tolx
+    elseif norm(xf - [4.0; 4.0]) <= tolx
         global c44 += 1
         scatter!(
             hplt,
