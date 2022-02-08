@@ -1,3 +1,18 @@
+"""
+	obstacle : example from Bazinga.jl
+
+    Example of optimal control of a discretized obstacle problem, yielding a
+    mathematical program with complementarity constraints (MPCC),
+    see Section 7.4 [HMW21].
+
+    References:
+    [HMW21]     Harder, Mehlitz, Wachsmuth, "Reformulation of the M-Stationarity
+                Conditions as a System of Discontinuous Equations and Its Solution
+                by a Semismooth Newton Method",
+                SIAM Journal on Optimization, 2021,
+                DOI: 10.1137/20M1321413.
+"""
+
 using ProximalOperators
 using LinearAlgebra
 using Bazinga
@@ -23,13 +38,13 @@ struct NonsmoothCostOBST <: ProximalOperators.ProximableFunction
 end
 function ProximalOperators.prox!(y, g::NonsmoothCostOBST, x, gamma)
     y .= max.(0, x)
-    for i = 1:f.N
-        if x[2*f.N+i] > x[f.N+i]
-            y[f.N+i] = 0
-            y[2*f.N+i] = x[2*f.N+i]
+    for i = 1:g.N
+        if x[2*g.N+i] > x[g.N+i]
+            y[g.N+i] = 0
+            y[2*g.N+i] = x[2*g.N+i]
         else
-            y[f.N+i] = x[f.N+i]
-            y[2*f.N+i] = 0
+            y[g.N+i] = x[g.N+i]
+            y[2*g.N+i] = 0
         end
     end
     return zero(eltype(x))
@@ -63,7 +78,7 @@ function Bazinga.proj!(z, D::SetOBST, x)
     return nothing
 end
 
-## formulation with (xx, xy) only
+## reduced formulation, without slack variables
 struct NonsmoothCostOBSTxy <: ProximalOperators.ProximableFunction
     N::Int
 end
@@ -104,10 +119,15 @@ function Bazinga.proj!(z, D::SetOBSTxy, x)
     return nothing
 end
 
-## iter
-problem_name = "obstacle"
-N = 64 # discretization intervals
-tol = 1e-4 # tolerance
+################################################################################
+# grid of discretizations and tolerances
+################################################################################
+using DataFrames
+using CSV
+
+problem_name = "obstacle_xy"
+Nvec = [32; 64; 128] # discretization intervals
+TOLvec = [1e-3; 1e-4; 1e-5] # tolerance
 sub_maxit = 10_000 # subsolver max iterations
 
 filename = problem_name
@@ -116,30 +136,45 @@ filepath = joinpath(@__DIR__, "results", filename)
 data = DataFrame()
 
 T = Float64
-f = SmoothCostOBST( N )
-if problem_name == "obstacle"
-    g = NonsmoothCostOBST( N )
-    c = ConstraintOBST( N )
-    D = SetOBST()
-    x0 = ones(T,3*N)
-    y0 = zeros(T,N)
-else
-    g = NonsmoothCostOBSTxy( N )
-    c = ConstraintOBSTxy( N )
-    D = SetOBSTxy( N )
-    x0 = ones(T,2*N)
-    y0 = zeros(T,2*N)
+
+for N in Nvec
+
+    f = SmoothCostOBST( N )
+    if problem_name == "obstacle_xy"
+        g = NonsmoothCostOBSTxy( N )
+        c = ConstraintOBSTxy( N )
+        D = SetOBSTxy( N )
+        x0 = ones(T,2*N)
+        y0 = zeros(T,2*N)
+    else
+        g = NonsmoothCostOBST( N )
+        c = ConstraintOBST( N )
+        D = SetOBST()
+        x0 = ones(T,3*N)
+        y0 = zeros(T,N)
+    end
+
+    for TOL in TOLvec
+
+        out = Bazinga.alps(f, g, c, D, x0, y0, tol=TOL, subsolver_maxit = sub_maxit)
+
+        xsol = out[1]
+        objx = f(xsol)
+        cx = similar(y0)
+        eval!(cx, c, xsol)
+        px = similar(y0)
+        proj!(px, D, cx)
+        distcx = norm(cx - px, 2)
+
+        push!(data, (N=N,
+                     tol=TOL,
+                     objective = objx,
+                     cviolation = distcx,
+                     iters=out[3],
+                     sub_iters=out[4],
+                     runtime=out[5],
+                     ))
+    end
 end
-
-out = Bazinga.alps(f, g, c, D, x0, y0, tol=tol, subsolver_maxit = sub_maxit)
-
-xsol = out[1]
-objx = f(xsol)
-cx = similar(y0)
-eval!(cx, c, xsol)
-px = similar(y0)
-proj!(px, D, cx)
-distcx = norm(cx - px, 2)
-push!(data, (N=N, objective = objx, distcx = distcx, iter=out[3], sub_iter=out[4], time=out[5]))
 
 CSV.write(filepath * ".csv", data, header = false)

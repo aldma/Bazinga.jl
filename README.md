@@ -2,26 +2,35 @@
 
 A toolbox for constrained structured optimization in Julia.
 
-## Why?
------------
-Robust, easy to use, yet efficient and fast numerical optimization algorithms designed to find (local) solutions of mathematical optimization problems of the form
-
+## Synopsis
+This package contains optimization algorithms designed to find (local) minimizers of mathematical problems of the form
 ```
    minimize        f(x) + g(x)
    with respect to x ∈ Rⁿ
    subject to      c(x) ∈ D
 ```
-where ```f(x): Rⁿ --> R``` is a smooth objective function (locally Lipschitz continuous gradient), ```g(x): Rⁿ --> R ∪ ∞``` is a proximable objective function, ```c(x): Rⁿ --> Rᵐ``` are smooth constraint functions, and ```D ⊆ Rᵐ``` is a nonempty closed set.
+where ``f`` and ``c`` have locally Lipschitz-continuous gradient, ``g`` is proper and lower semi-continuous, and ``D`` is a nonempty closed set.
+All these terms can be nonconvex.
 
 The problem terms are accessed through some oracles:
 
-* ```f```: function value, gradient
-* ```g```: proximal mapping, function value at proximal point
-* ```c```: function value, Jacobian-vector product
-* ```D```: projection mapping
+* ```f```: function value f(x) and gradient ∇f(x)
+* ```g```: proximal mapping prox_g(x) and function value at proximal point g(z)
+* ```c```: function value c(x) and Jacobian-vector product ∇c(x)ᵀv
+* ```D```: projection mapping proj_D(v)
 
-[ProximalOperators.jl](https://github.com/JuliaFirstOrder/ProximalOperators.jl) provides first-order primitives (gradient and proximal mapping) for modelling problems and giving access to the oracles of interest.
+[ProximalOperators.jl](https://github.com/JuliaFirstOrder/ProximalOperators.jl) provides first-order primitives (gradient and proximal mapping) for modelling problems and giving access to the oracles of interest. The ``PANOCplus`` solver offered by [ProximalAlgorithms.jl](https://github.com/JuliaFirstOrder/ProximalAlgorithms.jl) is adopted to solve subproblems arising in the augmented Lagrangian framework.
 
-License
-----------
-The Bazinga.jl package is licensed under the MIT License. We provide this program in the hope that it may be useful to others, and we would very much like to hear about your experience with it. If you found it helpful, we encourage you to [get in touch](mailto:aldmarchi@gmail.com) with us.
+## Citing
+
+If you are using Bazinga for your work or research, we encourage you to
+
+* Cite our work,
+* Put a star on this repository.
+
+We are looking forward to hearing your success stories with Bazinga! Please [share them with us](mailto:aldmarchi@gmail.com).
+
+
+## Bug reports and support
+
+Please report any issues via the [Github issue tracker](https://github.com/aldma/Bazinga.jl/issues). All types of issues are welcome including bug reports, typos, feature requests and so on.

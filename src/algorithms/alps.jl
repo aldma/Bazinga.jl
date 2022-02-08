@@ -14,6 +14,7 @@ function alps(
     verbose::Bool = false,
     dual_safeguard::Function = default_dual_safeguard!,
     subsolver_maxit::Int = 1_000,
+    subsolver_minimum_gamma::Real = eps(eltype(x0)),
 )
     start_time = time()
     T = eltype(x0)
@@ -33,15 +34,14 @@ function alps(
     mu = similar(y)
     gFun = NonsmoothCostFun(g)
     prox!(x, gFun, x0, eps(T))
-    fx = f(x)
-    objx = fx + gFun.gz
+    objx = f(x) + gFun.gz
     eval!(cx, c, x)
     proj!(s, D, cx)
     default_penalty_parameter!(mu, cx, s, objx)
     y .= y0
     dual_safeguard(y)
     proj!(s, D, cx .+ mu .* y)
-    norm_res_prim = norm(cx .- s, Inf)
+    norm_res_prim = nothing
     norm_res_prim_old = nothing
     alFun = AugLagFun(f, c, D, mu, y, x)
     tot_it = 0
@@ -50,43 +50,42 @@ function alps(
     tired = false
     if verbose
         @info "initial penalty parameters μ ∈ [$(minimum(mu)), $(maximum(mu))]"
-        @info "initial primal residual $(norm_res_prim)"
         @info "initial inner tolerance $(epsilon)"
     end
 
     # loop
     while !(solved || tired)
         tot_it += 1
-        # dual estimate
+        # safeguarded dual estimate
         dual_safeguard(y)
         # inner tolerance
         epsilon = max(kappaepsilon * epsilon, tol_dual)
         # solve subproblem
-        subsolver = default_subsolver(tol=epsilon, verbose=verbose, maxit=subsolver_maxit, freq=subsolver_maxit, minimum_gamma=1e-12)
+        subsolver = default_subsolver(
+            tol = epsilon,
+            verbose = verbose,
+            maxit = subsolver_maxit,
+            freq = subsolver_maxit,
+            minimum_gamma = subsolver_minimum_gamma,
+        )
         AugLagUpdate!(alFun, mu, y)
-        sub_sol, sub_it = subsolver(f=alFun, g=gFun, x0=x)
+        sub_sol, sub_it = subsolver(f = alFun, g = gFun, x0 = x)
         x .= sub_sol
         tot_inner_it += sub_it
         cx .= alFun.cx
-        fx = alFun.fx
-        gx = gFun.gz
-        objx = fx + gx
-        # s
         s .= alFun.s
-        # dual update
+        objx = alFun.fx + gFun.gz
+        # dual estimate update
         y .= alFun.yupd
-        # penalty parameters
-        if norm_res_prim_old === nothing
-            default_penalty_parameter!(mu, cx, s, objx)
-            if verbose
-                @info "restarted penalty parameters μ ∈ [$(minimum(mu)), $(maximum(mu))]"
-            end
-        elseif norm_res_prim > max(theta * norm_res_prim_old, tol_prim)
-            mu .*= kappamu
-        end
         # residuals
         norm_res_prim_old = norm_res_prim
         norm_res_prim = norm(cx .- s, Inf)
+        # penalty parameters
+        if norm_res_prim_old === nothing
+            #
+        elseif norm_res_prim > max(theta * norm_res_prim_old, tol_prim)
+            mu .*= kappamu
+        end
 
         solved = sub_it < subsolver_maxit && epsilon <= tol_dual && norm_res_prim <= tol_prim
         tired = tot_it > maxit
@@ -111,7 +110,7 @@ function default_dual_safeguard!(y)
 end
 
 function default_penalty_parameter!(mu, cx, proj_cx, objx)
-    mu .= max.(1.0, 0.5 * (cx .- proj_cx).^2) ./ max(1.0, objx)
+    mu .= max.(1.0, 0.5 * (cx .- proj_cx) .^ 2) ./ max(1.0, objx)
     mu .= max.(1e-4, min.(mu, 1e4))
     return nothing
 end

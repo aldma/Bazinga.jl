@@ -15,18 +15,18 @@
 	Reformulation as a constrained structured problem in the form
 
 	minimize     f(x) + g(x)
-	subject to   c(x) in S
+	subject to   c(x) in D
 
 	where
 	    f(x) = 4*x1 + 2*x2
 	    g(x) = IndBox[0,+infty](x)
 	    c(x) = [ x1                  ]
-	           [ x2                  ]
 	           [ x1 + x2 - 5*sqrt(2) ]
+       	       [ x2                  ]
 	           [ x1 + x2 - 5         ]
-	    S   = { c | (c1,c3) in SV, (c2,c4) in SV }
+	    D    = { c | (c1,c2) in Dvc, (c3,c4) in Dvc }
 	with
-	    SV  = { (a,b) | a >= 0, a*b >= 0 }
+	    Dvc  = { (a,b) | a >= 0, a*b >= 0 }
 
     References:
     [Hoh09]     Hoheisel, "Mathematical Programs with Vanishing Constraints",
@@ -37,9 +37,9 @@ using ProximalOperators
 using LinearAlgebra
 using Bazinga
 
-###################################################################################
+################################################################################
 # problem definition
-###################################################################################
+################################################################################
 struct SmoothCostMPVCA <: ProximalOperators.ProximableFunction
     c::AbstractVector
 end
@@ -75,6 +75,7 @@ function Bazinga.proj!(z, D::SetMPVCA, x)
 end
 
 # iter
+problem_name = "mpvca"
 T = Float64
 f = SmoothCostMPVCA( T.([4; 2]))
 g = NonsmoothCostMPVCA()
@@ -86,15 +87,13 @@ y0 = zeros(T,4)
 
 out = Bazinga.alps(f, g, c, D, x0, y0, verbose=true)
 
-###############################################################################
-###############################################################################
-###############################################################################
+################################################################################
+# grid of starting points
+################################################################################
 using DataFrames
-using Printf
 using Plots
 using CSV
 
-problem_name = "mpvca"
 filename = problem_name * "_grid"
 filepath = joinpath(@__DIR__, "results", filename)
 
@@ -103,7 +102,7 @@ xmax = 20.0
 
 data = DataFrame()
 
-xgrid = [(i, j) for i = xmin:0.25:xmax, j = xmin:0.25:xmax];
+xgrid = [(i, j) for i = xmin:0.5:xmax, j = xmin:0.5:xmax];
 xgrid = xgrid[:];
 ntests = length(xgrid)
 
@@ -113,47 +112,55 @@ for i = 1:ntests
 
     out = Bazinga.alps(f, g, c, D, x0, y0)
 
-    @printf "."
-    if mod(i, 50) == 0
-        @printf "\n"
-    end
-
     xsol = out[1]
-    push!(data, (id = i, xi_1 = x0[1], xi_2 = x0[2], xf_1 = xsol[1], xf_2 = xsol[2], iter=out[3], sub_iter=out[4], time=out[5]))
+    push!(data, (id = i,
+                 xinit_1 = x0[1],
+                 xinit_2 = x0[2],
+                 xfinal_1 = xsol[1],
+                 xfinal_2 = xsol[2],
+                 iters=out[3],
+                 sub_iters=out[4],
+                 runtime=out[5],
+                 ))
 
 end
-@printf "\n"
 
 CSV.write(filepath * ".csv", data, header=false)
 
 ################################################################################
-tolx = 1e-3
+# plot results
+################################################################################
 
+# minimizers
+x_00 = T.([0; 0])
+x_05 = T.([0; 5])
+
+# counters
 global c_00 = 0
 global c_05 = 0
-global c_11 = 0
 global c_un = 0
 
+# plot feasible set
 feasset = Shape([(0.0,xmax),(0.0,5*sqrt(2)),(5*sqrt(2),0.0),(xmax,0.0),(xmax,xmax),(0.0,xmax)])
 hplt = plot(feasset, color=plot_color(:grey,0.4), linewidth=0, legend = false)
 xlims!(xmin,xmax)
 ylims!(xmin,xmax)
 
+tolx = 1e-3 # approx tolerance
+
 for i in 1:ntests
     xi = [data[i,2]; data[i,3]]
     xf = [data[i,4]; data[i,5]]
 
-    if norm(xf) <= tolx
+    if norm(xf - x_00) <= tolx
         global c_00 += 1
         scatter!(hplt, [xi[1]], [xi[2]], color=:blue, marker=:circle, markerstrokewidth=0, legend = false)
-    elseif norm(xf - [0.0;5.0]) <= tolx
+    elseif norm(xf - x_05) <= tolx
         global c_05 += 1
         scatter!(hplt, [xi[1]], [xi[2]], color=:red, marker=:diamond, markerstrokewidth=0, legend = false)
-    elseif xf[1] >= 0 && xf[2] >= 0 && xf[1]+xf[2] <= 3
-        global c_11 += 1
-        scatter!(hplt, [xi[1]], [xi[2]], color=:green, marker=:star5, markerstrokewidth=0, legend = false)
     else
         global c_un += 1
+        @printf "(%6.4f,%6.4f) from (%6.4f,%6.4f)\n" xf[1] xf[2] xi[1] xi[2]
     end
 end
 
