@@ -11,7 +11,6 @@
 	              x2                       >= 0
 	              (x1 + x2 - 5*sqrt(2))*x1 >= 0
 	              (x1 + x2 - 5        )*x2 >= 0
- 		          x1 + x2 - 3              >= 0 (ncon == 5)
 
 	Reformulation as a constrained structured problem in the form
 
@@ -25,8 +24,7 @@
 	           [ x2                  ]
 	           [ x1 + x2 - 5*sqrt(2) ]
 	           [ x1 + x2 - 5         ]
-		       [ x1 + x2 - 3         ] (ncon == 5)
-	    S   = { c | (c1,c3) in SV, (c2,c4) in SV, c5 >= 0 }
+	    S   = { c | (c1,c3) in SV, (c2,c4) in SV }
 	with
 	    SV  = { (a,b) | a >= 0, a*b >= 0 }
 
