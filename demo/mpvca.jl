@@ -69,30 +69,9 @@ function Bazinga.jtprod!(jtv, c::ConstraintMPVCA, x, v)
 end
 
 struct SetMPVCA <: ClosedSet end
-function Bazinga.proj!(z, D::SetMPVCA, x)
-    #Bazinga.project_onto_VC_set!(@view(z[1:2]), @view(x[1:2]))
-    #Bazinga.project_onto_VC_set!(@view(z[3:4]), @view(x[3:4]))
-
-    z .= x
-    if z[1] <= 0.0
-        z[1] = 0.0
-    elseif z[2] < 0.0
-        if z[1] + z[2] > 0.0
-            z[2] = 0.0
-        else
-            z[1] = 0.0
-        end
-    end
-
-    if z[3] <= 0.0
-        z[3] = 0.0
-    elseif z[4] < 0.0
-        if z[3] + z[4] > 0.0
-            z[4] = 0.0
-        else
-            z[3] = 0.0
-        end
-    end
+function Bazinga.proj!(z, D::SetMPVCA, cx)
+    Bazinga.project_onto_VC_set!(@view(z[1:2]), cx[1:2])
+    Bazinga.project_onto_VC_set!(@view(z[3:4]), cx[3:4])
     return nothing
 end
 
@@ -109,24 +88,27 @@ ny = 4
 
 subsolver_directions = ProximalAlgorithms.LBFGS(5)
 subsolver_maxit = 1_000
+subsolver_minimum_gamma = eps(T)
 subsolver(; kwargs...) = ProximalAlgorithms.PANOC(
     directions = subsolver_directions,
     maxit = subsolver_maxit,
     freq = subsolver_maxit,
-    verbose = true;
+    minimum_gamma = subsolver_minimum_gamma,
+    verbose = false;
     kwargs...,
 )
-_ = Bazinga.alps(
+solver(f, g, c, D, x0, y0) = Bazinga.alps(
     f,
     g,
     c,
     D,
-    ones(T, nx),
-    zeros(T, ny),
-    verbose = true,
+    x0,
+    y0,
+    verbose = false,
     subsolver = subsolver,
-    maxit=3,
+    subsolver_maxit = subsolver_maxit,
 )
+_ = solver( f, g, c, D, ones(T, nx), zeros(T, ny) )
 
 ################################################################################
 # grid of starting points
@@ -145,7 +127,7 @@ xmax = 20.0
 
 data = DataFrame()
 
-xgrid = [(i, j) for i = xmin:2.5:xmax, j = xmin:2.5:xmax];
+xgrid = [(i, j) for i = xmin:0.5:xmax, j = xmin:0.5:xmax];
 xgrid = xgrid[:];
 ntests = length(xgrid)
 
@@ -153,7 +135,7 @@ for i = 1:ntests
     x0 = [xgrid[i][1]; xgrid[i][2]]
     y0 = zeros(T, ny)
 
-    out = Bazinga.alps(f, g, c, D, x0, y0, verbose=true, subsolver = subsolver)
+    out = solver(f, g, c, D, x0, y0)
 
     xsol = out[1]
     push!(

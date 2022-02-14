@@ -15,8 +15,8 @@ function alps(
     maxit::Int = 100,
     verbose::Bool = false,
     dual_safeguard::Function = default_dual_safeguard!,
-    subsolver_minimum_gamma::Real = eps(eltype(x0)),
     subsolver::TS = default_subsolver,
+    subsolver_maxit::Int = 1_000_000_000,
 ) where {TS}
     start_time = time()
     T = eltype(x0)
@@ -58,25 +58,26 @@ function alps(
     while !(solved || tired || broken)
         tot_it += 1
         # safeguarded dual estimate
-        y .= alFun.yupd
         dual_safeguard(y)
         # inner tolerance
         epsilon = max(kappaepsilon * epsilon, tol_dual)
         # solve subproblem
-        sub_solver = subsolver(
-            tol = epsilon,
-            minimum_gamma = subsolver_minimum_gamma,
-        )
+        sub_solver = subsolver(tol = epsilon)
         AugLagUpdate!(alFun, mu, y)
         sub_sol, sub_it = sub_solver(f = alFun, g = gFun, x0 = x)
         x .= sub_sol
-        tot_inner_it += sub_it
-        cx .= alFun.cx
-        s .= alFun.s
         objx = alFun.fx + gFun.gz
-        broken = isnan(objx)
+        tot_inner_it += sub_it
+        sub_solved = sub_it < subsolver_maxit
+        #cx .= alFun.cx # cx from alFun ?
+        eval!(cx, c, x)
+        #s .= alFun.s # s from alFun ?
+        y .= cx .+ alFun.muy              # cx + mu .* y          (temporary)
+        proj!(s, D, y)
         # dual estimate update
-        #y .= alFun.yupd
+        #y .= alFun.yupd # dual estimate from alFun ?
+        y .-= s                        # cx + mu .* y - s      (temporary)
+        y ./= mu
         # residuals
         norm_res_prim_old = norm_res_prim
         norm_res_prim = norm(cx .- s, Inf)
@@ -86,12 +87,10 @@ function alps(
         elseif norm_res_prim > max(theta * norm_res_prim_old, tol_prim)
             mu .*= kappamu
         end
-        if verbose
-            @info "$(tot_it) | $(tot_inner_it) | $(objx) | $(epsilon) | $(norm_res_prim)"
-        end
-
-        solved = epsilon <= tol_dual && norm_res_prim <= tol_prim # check subsolver_maxit?
+        # termination checks
+        solved = (epsilon <= tol_dual && sub_solved) && norm_res_prim <= tol_prim # check subsolver_maxit?
         tired = tot_it >= maxit
+        broken = isnan(objx)
     end
     elapsed_time = time() - start_time
 
@@ -105,7 +104,7 @@ function alps(
         :unknown
     end
 
-    return x, y, tot_it, tot_inner_it, elapsed_time, epsilon, norm_res_prim, s
+    return x, y, tot_it, tot_inner_it, elapsed_time, epsilon, norm_res_prim, s, mu
 
 end
 
@@ -116,6 +115,7 @@ end
 
 function default_penalty_parameter!(mu, cx, proj_cx, objx)
     mu .= max.(1.0, 0.5 * (cx .- proj_cx) .^ 2) ./ max(1.0, objx)
+    mu .*= 0.1
     mu .= max.(1e-8, min.(mu, 1e8))
     return nothing
 end

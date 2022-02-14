@@ -58,7 +58,7 @@ end
 ################################################################################
 
 problem_name = "rosenbrock"
-subsolver_name = "noaccel"
+subsolver_name = "lbfgs"
 
 T = Float64
 
@@ -80,23 +80,27 @@ else
 end
 
 subsolver_maxit = 1_000
+subsolver_minimum_gamma = eps(T)
 subsolver(; kwargs...) = ProximalAlgorithms.PANOC(
     directions = subsolver_directions,
     maxit = subsolver_maxit,
     freq = subsolver_maxit,
+    minimum_gamma = subsolver_minimum_gamma,
     verbose = true;
     kwargs...,
 )
-_ = Bazinga.alps(
+solver(f, g, c, D, x0, y0) = Bazinga.alps(
     f,
     g,
     c,
     D,
-    ones(T, nx),
-    zeros(T, ny),
-    verbose = true,
+    x0,
+    y0,
+    verbose = false,
     subsolver = subsolver,
+    subsolver_maxit = subsolver_maxit,
 )
+_ = solver( f, g, c, D, ones(T, nx), zeros(T, ny) )
 
 ################################################################################
 # grid of starting points
@@ -115,7 +119,7 @@ xmax = 5.0
 
 data = DataFrame()
 
-xgrid = [(i, j) for i = xmin:0.25:xmax, j = xmin:0.25:xmax];
+xgrid = [(i, j) for i = xmin:0.5:xmax, j = xmin:0.5:xmax];
 xgrid = xgrid[:];
 ntests = length(xgrid)
 
@@ -123,7 +127,7 @@ for i = 1:ntests
     x0 = [xgrid[i][1]; xgrid[i][2]]
     y0 = zeros(T, ny)
 
-    out = Bazinga.alps(f, g, c, D, x0, y0, subsolver = subsolver)
+    out = solver(f, g, c, D, x0, y0)
 
     xsol = out[1]
     push!(
