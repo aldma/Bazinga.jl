@@ -32,6 +32,7 @@
 
 using ProximalOperators
 using LinearAlgebra
+using ProximalAlgorithms
 using Bazinga
 
 ###################################################################################
@@ -50,7 +51,7 @@ end
 
 struct NonsmoothCostOR <: ProximalOperators.ProximableFunction end
 function ProximalOperators.prox!(y, g::NonsmoothCostOR, x, gamma)
-    y .= max.(-10, min.(x, 10))
+    y .= x
     return zero(eltype(x))
 end
 
@@ -83,56 +84,92 @@ end
 
 # iter
 problem_name = "xor"
+subsolver_name = "lbfgs"
+
 T = Float64
-f = SmoothCostOR( T.([8; -3]) )
+f = SmoothCostOR(T.([8; -3]))
 g = NonsmoothCostOR()
 c = ConstraintOR()
-if problem_name == "xor"
-    D = SetXOR()
+D = if problem_name == "eitheror"
+    SetXOR()
+elseif problem_name == "xor"
+    SetEITHEROR()
 else
-    D = SetEITHEROR()
+    @error "Unknown set"
 end
+nx = 2
+ny = 4
 
-x0 = ones(T,2)
-y0 = zeros(T,4)
-
-out = Bazinga.alps(f, g, c, D, x0, y0, verbose=true)
+subsolver_directions = if subsolver_name == "noaccel"
+    ProximalAlgorithms.NoAcceleration()
+elseif subsolver_name == "broyden"
+    ProximalAlgorithms.Broyden()
+elseif subsolver_name == "anderson"
+    ProximalAlgorithms.AndersonAcceleration(5)
+elseif subsolver_name == "lbfgs"
+    ProximalAlgorithms.LBFGS(5)
+else
+    @error "Unknown acceleration"
+end
+subsolver_maxit = 1_000
+subsolver(; kwargs...) = ProximalAlgorithms.PANOC(
+    directions = subsolver_directions,
+    maxit = subsolver_maxit,
+    freq = subsolver_maxit,
+    verbose = true;
+    kwargs...,
+)
+_ = Bazinga.alps(
+    f,
+    g,
+    c,
+    D,
+    zeros(T, nx),
+    zeros(T, ny),
+    verbose = true,
+    subsolver = subsolver,
+)
 
 ################################################################################
 # grid of starting points
 ################################################################################
 using DataFrames
+using Printf
 using Plots
 using CSV
 
-filename = problem_name * "_grid"
+filename = problem_name * "_" * subsolver_name * "_grid"
 filepath = joinpath(@__DIR__, "results", filename)
 
 xmin = -4.0
-xmax =  8.0
+xmax = 8.0
 
 data = DataFrame()
 
-xgrid = [(i, j) for i = xmin:0.25:xmax, j = xmin:0.25:xmax];
+xgrid = [(i, j) for i = xmin:0.5:xmax, j = xmin:0.5:xmax];
 xgrid = xgrid[:];
 ntests = length(xgrid)
 
 for i = 1:ntests
     x0 = [xgrid[i][1]; xgrid[i][2]]
-    y0 = zeros(T,4)
+    y0 = zeros(T, ny)
 
-    out = Bazinga.alps(f, g, c, D, x0, y0)
+    out = Bazinga.alps(f, g, c, D, x0, y0, verbose = true, subsolver = subsolver)
 
     xsol = out[1]
-    push!(data, (id = i,
-                 xinit_1 = x0[1],
-                 xinit_2 = x0[2],
-                 xfinal_1 = xsol[1],
-                 xfinal_2 = xsol[2],
-                 iters=out[3],
-                 sub_iters=out[4],
-                 runtime=out[5],
-                 ))
+    push!(
+        data,
+        (
+            id = i,
+            xinit_1 = x0[1],
+            xinit_2 = x0[2],
+            xfinal_1 = xsol[1],
+            xfinal_2 = xsol[2],
+            iters = out[3],
+            sub_iters = out[4],
+            runtime = out[5],
+        ),
+    )
 
 end
 
@@ -162,13 +199,13 @@ end
 append!(pts, [(2, 3)])
 append!(pts, [(4, 4)])
 for i = 1:50
-    xx = 4 + (xmax - 4) * i / 50
+    xx = 4 + (4 * i / 50)
     yy = (xx^2) / 4
     append!(pts, [(xx, yy)])
 end
-append!(pts, [(xmin, xmax)])
+append!(pts, [(-4, 8)])
 for i = 0:50
-    xx = xmin * (1 - i / 50)
+    xx = -4 * (1 - i / 50)
     yy = (xx^2) / 4
     append!(pts, [(xx, yy)])
 end
@@ -185,10 +222,26 @@ for i = 1:ntests
 
     if norm(xf - x_22) <= tolx
         global c22 += 1
-        scatter!(hplt, [xi[1]], [xi[2]], color=:blue, marker=:circle, markerstrokewidth=0, legend = false)
+        scatter!(
+            hplt,
+            [xi[1]],
+            [xi[2]],
+            color = :blue,
+            marker = :circle,
+            markerstrokewidth = 0,
+            legend = false,
+        )
     elseif norm(xf - x_44) <= tolx
         global c44 += 1
-        scatter!(hplt, [xi[1]], [xi[2]], color=:red, marker=:diamond, markerstrokewidth=0, legend = false)
+        scatter!(
+            hplt,
+            [xi[1]],
+            [xi[2]],
+            color = :red,
+            marker = :diamond,
+            markerstrokewidth = 0,
+            legend = false,
+        )
     else
         global cun += 1
         @printf "(%6.4f,%6.4f) from (%6.4f,%6.4f)\n" xf[1] xf[2] xi[1] xi[2]

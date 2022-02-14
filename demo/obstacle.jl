@@ -16,98 +16,135 @@
 using ProximalOperators
 using LinearAlgebra
 using Bazinga
+using ProximalAlgorithms
 
 ###################################################################################
 # problem definition
 ###################################################################################
-struct SmoothCostOBST <: ProximalOperators.ProximableFunction
+struct SmoothCostObstacleL2 <: ProximalOperators.ProximableFunction
     N::Int
 end
-function (f::SmoothCostOBST)(x)
+function (f::SmoothCostObstacleL2)(x)
     return 0.5 * norm(x[1:2*f.N], 2)^2 - sum(x[f.N+1:2*f.N])
 end
-function ProximalOperators.gradient!(dfx, f::SmoothCostOBST, x)
+function ProximalOperators.gradient!(dfx, f::SmoothCostObstacleL2, x)
     dfx .= 0.0
     dfx[1:f.N] .= x[1:f.N]
     dfx[f.N+1:2*f.N] .= x[f.N+1:2*f.N] .- 1.0
     return 0.5 * norm(x[1:2*f.N], 2)^2 - sum(x[f.N+1:2*f.N])
 end
 
-struct NonsmoothCostOBST <: ProximalOperators.ProximableFunction
+struct SmoothCostObstacleL1 <: ProximalOperators.ProximableFunction
     N::Int
 end
-function ProximalOperators.prox!(y, g::NonsmoothCostOBST, x, gamma)
+function (f::SmoothCostObstacleL1)(x)
+    return 0.5 * norm(x[f.N+1:2*f.N], 2)^2 - sum(x[f.N+1:2*f.N])
+end
+function ProximalOperators.gradient!(dfx, f::SmoothCostObstacleL1, x)
+    dfx .= 0.0
+    dfx[f.N+1:2*f.N] .= x[f.N+1:2*f.N] .- 1.0
+    return 0.5 * norm(x[f.N+1:2*f.N], 2)^2 - sum(x[f.N+1:2*f.N])
+end
+
+struct NonsmoothCostObstacleL2 <: ProximalOperators.ProximableFunction
+    N::Int
+end
+function ProximalOperators.prox!(y, g::NonsmoothCostObstacleL2, x, gamma)
     y .= max.(0, x)
     for i = 1:g.N
-        if x[2*g.N+i] > x[g.N+i]
-            y[g.N+i] = 0
-            y[2*g.N+i] = x[2*g.N+i]
-        else
-            y[g.N+i] = x[g.N+i]
+        if y[g.N+i] > y[2*g.N+i]
             y[2*g.N+i] = 0
+        else
+            y[g.N+i] = 0
         end
     end
     return zero(eltype(x))
 end
 
-struct ConstraintOBST <: SmoothFunction
+struct NonsmoothCostObstacleL1 <: ProximalOperators.ProximableFunction
+    N::Int
+end
+function ProximalOperators.prox!(y, g::NonsmoothCostObstacleL1, x, gamma)
+    y[1:g.N] .= max.(0.0, x[1:g.N] .- gamma)
+    for i = 1:g.N
+        if y[g.N+i] > y[2*g.N+i]
+            y[2*g.N+i] = 0
+        else
+            y[g.N+i] = 0
+        end
+    end
+    return sum( y[1:g.N] )
+end
+
+struct ConstraintObstacle <: SmoothFunction
     N::Int
     A::AbstractMatrix
 end
-function ConstraintOBST(N)
+function ConstraintObstacle(N)
     T = Float64
     dv = 2 * ones(T,N)
     ev = -1 * ones(T,N-1)
     A = SymTridiagonal(dv, ev)
-    return ConstraintOBST(N, A)
+    return ConstraintObstacle(N, A)
 end
-function Bazinga.eval!(cx, c::ConstraintOBST, x)
+function Bazinga.eval!(cx, c::ConstraintObstacle, x)
     cx .= x[1:c.N] .+ c.A * x[c.N+1:2*c.N] .- x[2*c.N+1:3*c.N]
     return nothing
 end
-function Bazinga.jtprod!(jtv, c::ConstraintOBST, x, v)
+function Bazinga.jtprod!(jtv, c::ConstraintObstacle, x, v)
     jtv[1:c.N] .= v
     jtv[c.N+1:2*c.N] .= c.A * v # A = A'
     jtv[2*c.N+1:3*c.N] .= - v
     return nothing
 end
 
-struct SetOBST <: ClosedSet end
-function Bazinga.proj!(z, D::SetOBST, x)
+struct SetObstacle <: ClosedSet end
+function Bazinga.proj!(z, D::SetObstacle, x)
     z .= 0.0
     return nothing
 end
 
-## reduced formulation, without slack variables
-struct NonsmoothCostOBSTxy <: ProximalOperators.ProximableFunction
+struct NonsmoothCostObstacleL2Red <: ProximalOperators.ProximableFunction
     N::Int
 end
-function ProximalOperators.prox!(y, g::NonsmoothCostOBSTxy, x, gamma)
+function ProximalOperators.prox!(y, g::NonsmoothCostObstacleL2Red, x, gamma)
     y .= max.(0, x)
     return zero(eltype(x))
 end
-struct ConstraintOBSTxy <: SmoothFunction
+
+struct NonsmoothCostObstacleRedL1 <: ProximalOperators.ProximableFunction
+    N::Int
+end
+function ProximalOperators.prox!(y, g::NonsmoothCostObstacleRedL1, x, gamma)
+    y[1:g.N] .= max.(0.0, x[1:g.N] .- gamma)
+    y[g.N+1:2*g.N] .= max.(0.0, x[g.N+1:2*g.N])
+    return sum( y[1:g.N] )
+end
+
+struct ConstraintObstacleRed <: SmoothFunction
     N::Int
     A::AbstractMatrix
 end
-function ConstraintOBSTxy(N)
-    c = ConstraintOBST(N)
-    return ConstraintOBSTxy(N, c.A)
+function ConstraintObstacleRed(N)
+    c = ConstraintObstacle(N)
+    return ConstraintObstacleRed(N, c.A)
 end
-function Bazinga.eval!(cx, c::ConstraintOBSTxy, x)
+function Bazinga.eval!(cx, c::ConstraintObstacleRed, x)
     cx[1:c.N] .= x[1:c.N] .+ c.A * x[c.N+1:2*c.N]
     cx[c.N+1:2*c.N] .= x[c.N+1:2*c.N]
     return nothing
 end
-function Bazinga.jtprod!(jtv, c::ConstraintOBSTxy, x, v)
+function Bazinga.jtprod!(jtv, c::ConstraintObstacleRed, x, v)
     jtv[1:c.N] .= v[1:c.N]
     jtv[c.N+1:2*c.N] .= c.A * v[1:c.N] + v[c.N+1:2*c.N] # A = A'
     return nothing
 end
-struct SetOBSTxy <: ClosedSet
+
+struct SetObstacleRed <: ClosedSet
     N::Int
 end
-function Bazinga.proj!(z, D::SetOBSTxy, x)
+function Bazinga.proj!(z, D::SetObstacleRed, x)
+    # complementarity constraint
     z .= max.(0, x)
     for i = 1:D.N
         if z[i] > z[i+D.N]
@@ -125,10 +162,9 @@ end
 using DataFrames
 using CSV
 
-problem_name = "obstacle_xy"
-Nvec = [32; 64; 128] # discretization intervals
-TOLvec = [1e-3; 1e-4; 1e-5] # tolerance
-sub_maxit = 10_000 # subsolver max iterations
+problem_name = "obstacle_l1_red" # obstacle_ + l1, l2 + _red
+Nvec = [32; 64] # discretization intervals
+TOLvec = [1e-3; 1e-4] # tolerance
 
 filename = problem_name
 filepath = joinpath(@__DIR__, "results", filename)
@@ -137,32 +173,61 @@ data = DataFrame()
 
 T = Float64
 
-for N in Nvec
+subsolver_directions = ProximalAlgorithms.LBFGS(5)
+subsolver_maxit = 1_000
+subsolver(; kwargs...) = ProximalAlgorithms.PANOC(
+    directions = subsolver_directions,
+    maxit = subsolver_maxit,
+    freq = subsolver_maxit,
+    verbose = true;
+    kwargs...,
+)
 
-    f = SmoothCostOBST( N )
-    if problem_name == "obstacle_xy"
-        g = NonsmoothCostOBSTxy( N )
-        c = ConstraintOBSTxy( N )
-        D = SetOBSTxy( N )
-        x0 = ones(T,2*N)
-        y0 = zeros(T,2*N)
+#global nx = nothing
+#global ny = nothing
+
+for N in Nvec
+    if problem_name == "obstacle_l2"
+        f = SmoothCostObstacleL2( N )
+        g = NonsmoothCostObstacleL2( N )
+        c = ConstraintObstacle( N )
+        D = SetObstacle()
+        nx = 3*N
+        ny = N
+    elseif problem_name == "obstacle_l2_red"
+        f = SmoothCostObstacleL2( N )
+        g = NonsmoothCostObstacleL2Red( N )
+        c = ConstraintObstacleRed( N )
+        D = SetObstacleRed( N )
+        nx = 2*N
+        ny = 2*N
+    elseif problem_name == "obstacle_l1"
+        f = SmoothCostObstacleL1( N )
+        g = NonsmoothCostObstacleL1( N )
+        c = ConstraintObstacle( N )
+        D = SetObstacle()
+        nx = 3*N
+        ny = N
+    elseif problem_name == "obstacle_l1_red"
+        f = SmoothCostObstacleL1( N )
+        g = NonsmoothCostObstacleRedL1( N )
+        c = ConstraintObstacleRed( N )
+        D = SetObstacleRed( N )
+        nx = 2*N
+        ny = 2*N
     else
-        g = NonsmoothCostOBST( N )
-        c = ConstraintOBST( N )
-        D = SetOBST()
-        x0 = ones(T,3*N)
-        y0 = zeros(T,N)
+        @error "Unknown problem"
     end
 
     for TOL in TOLvec
 
-        out = Bazinga.alps(f, g, c, D, x0, y0, tol=TOL, subsolver_maxit = sub_maxit)
+        out = Bazinga.alps(f, g, c, D, ones(T, nx), zeros(T, ny), tol=TOL, verbose = true, subsolver = subsolver)
 
         xsol = out[1]
         objx = f(xsol)
-        cx = similar(y0)
+        cx = zeros(T, ny)
         eval!(cx, c, xsol)
-        px = similar(y0)
+        px = zeros(T, ny)
         proj!(px, D, cx)
         distcx = norm(cx - px, 2)
 
