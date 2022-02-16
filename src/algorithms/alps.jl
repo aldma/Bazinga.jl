@@ -12,7 +12,11 @@ function alps(
     x0::AbstractArray,
     y0::AbstractArray;
     tol::Real = eltype(x0)(1e-6),
+    epsilon::Real = sqrt(tol),
     maxit::Int = 100,
+    theta::Real = 0.8,
+    kappamu::Real = 0.5,
+    kappaepsilon::Real = 0.1,
     verbose::Bool = false,
     dual_safeguard::Function = default_dual_safeguard!,
     subsolver::TS = default_subsolver,
@@ -20,11 +24,6 @@ function alps(
 ) where {TS}
     start_time = time()
     T = eltype(x0)
-    tol_prim = tol
-    tol_dual = tol
-    theta = 0.8
-    kappamu = 0.5
-    kappaepsilon = 0.1
 
     # allocation
     x = similar(x0)
@@ -33,7 +32,6 @@ function alps(
     s = similar(y0)
     mu = similar(y0)
     # initialize
-    epsilon = sqrt(tol_dual)
     gFun = NonsmoothCostFun(g)
     prox!(x, gFun, x0, eps(T))
     objx = f(x) + gFun.gz
@@ -58,9 +56,9 @@ function alps(
     while !(solved || tired || broken)
         tot_it += 1
         # safeguarded dual estimate
-        dual_safeguard(y)
+        dual_safeguard(y, cx) # in-place
         # inner tolerance
-        epsilon = max(kappaepsilon * epsilon, tol_dual)
+        epsilon = max(kappaepsilon * epsilon, tol)
         # solve subproblem
         sub_solver = subsolver(tol = epsilon)
         AugLagUpdate!(alFun, mu, y)
@@ -72,11 +70,11 @@ function alps(
         #cx .= alFun.cx # cx from alFun ?
         eval!(cx, c, x)
         #s .= alFun.s # s from alFun ?
-        y .= cx .+ alFun.muy              # cx + mu .* y          (temporary)
+        y .= cx .+ alFun.muy # temporary
         proj!(s, D, y)
         # dual estimate update
         #y .= alFun.yupd # dual estimate from alFun ?
-        y .-= s                        # cx + mu .* y - s      (temporary)
+        y .-= s # temporary
         y ./= mu
         # residuals
         norm_res_prim_old = norm_res_prim
@@ -84,11 +82,11 @@ function alps(
         # penalty parameters
         if norm_res_prim_old === nothing
             #
-        elseif norm_res_prim > max(theta * norm_res_prim_old, tol_prim)
+        elseif norm_res_prim > max(theta * norm_res_prim_old, tol)
             mu .*= kappamu
         end
         # termination checks
-        solved = (epsilon <= tol_dual && sub_solved) && norm_res_prim <= tol_prim # check subsolver_maxit?
+        solved = (epsilon <= tol && sub_solved) && norm_res_prim <= tol
         tired = tot_it >= maxit
         broken = isnan(objx)
     end
@@ -108,11 +106,18 @@ function alps(
 
 end
 
+# default dual safeguard
 function default_dual_safeguard!(y)
     y .= max.(-1e20, min.(y, 1e20))
     return nothing
 end
 
+function default_dual_safeguard!(y, cx)
+    default_dual_safeguard!(y)
+    return nothing
+end
+
+# default penalty parameter
 function default_penalty_parameter!(mu, cx, proj_cx, objx)
     mu .= max.(1.0, 0.5 * (cx .- proj_cx) .^ 2) ./ max(1.0, objx)
     mu .*= 0.1
