@@ -38,12 +38,12 @@ struct SmoothCostObstacleL1 <: ProximalOperators.ProximableFunction
     N::Int
 end
 function (f::SmoothCostObstacleL1)(x)
-    return 0.5 * norm(x[f.N+1:2*f.N], 2)^2 - sum(x[f.N+1:2*f.N])
+    return 0.5 * sum( x[f.N+1:2*f.N].^2 ) - sum( x[f.N+1:2*f.N] )
 end
 function ProximalOperators.gradient!(dfx, f::SmoothCostObstacleL1, x)
     dfx .= 0.0
     dfx[f.N+1:2*f.N] .= x[f.N+1:2*f.N] .- 1.0
-    return 0.5 * norm(x[f.N+1:2*f.N], 2)^2 - sum(x[f.N+1:2*f.N])
+    return 0.5 * sum( x[f.N+1:2*f.N].^2 ) - sum( x[f.N+1:2*f.N] )
 end
 
 struct NonsmoothCostObstacleL2 <: ProximalOperators.ProximableFunction
@@ -65,12 +65,16 @@ struct NonsmoothCostObstacleL1 <: ProximalOperators.ProximableFunction
     N::Int
 end
 function ProximalOperators.prox!(y, g::NonsmoothCostObstacleL1, x, gamma)
-    y[1:g.N] .= max.(0.0, x[1:g.N] .- gamma)
+    y[1:g.N] .= max.(0, x[1:g.N] .- gamma)
+    y[g.N+1:end] .= max.(0, x[g.N+1:end])
     for i = 1:g.N
         if y[g.N+i] > y[2*g.N+i]
             y[2*g.N+i] = 0
-        else
+        elseif y[g.N+i] < y[2*g.N+i]
             y[g.N+i] = 0
+        else # set-valued case
+            y[g.N+i] = 0
+            #y[2*g.N+i] = 0
         end
     end
     return sum( y[1:g.N] )
@@ -116,8 +120,8 @@ struct NonsmoothCostObstacleRedL1 <: ProximalOperators.ProximableFunction
     N::Int
 end
 function ProximalOperators.prox!(y, g::NonsmoothCostObstacleRedL1, x, gamma)
-    y[1:g.N] .= max.(0.0, x[1:g.N] .- gamma)
-    y[g.N+1:2*g.N] .= max.(0.0, x[g.N+1:2*g.N])
+    y[1:g.N] .= max.(0, x[1:g.N] .- gamma)
+    y[g.N+1:2*g.N] .= max.(0, x[g.N+1:2*g.N])
     return sum( y[1:g.N] )
 end
 
@@ -149,8 +153,11 @@ function Bazinga.proj!(z, D::SetObstacleRed, x)
     for i = 1:D.N
         if z[i] > z[i+D.N]
             z[i+D.N] = 0
-        else
+        elseif z[i] < z[i+D.N]
             z[i] = 0
+        else # set-valued case
+            z[i] = 0
+            #z[i+D.N] = 0
         end
     end
     return nothing
@@ -162,8 +169,8 @@ end
 using DataFrames
 using CSV
 
-problem_name = "obstacle_l1_red" # obstacle_l1, obstacle_l1_red
-Nvec = [16; 32; 48; 64; 80; 96] # discretization intervals
+problem_name = "obstacle_l1" # obstacle_l1, obstacle_l1red
+Nvec = [16; 32; 48; 64] # discretization intervals
 TOLvec = 10 .^ collect(range(-3,-6,length=13)) # tolerance
 
 filename = problem_name
@@ -180,8 +187,7 @@ subsolver(; kwargs...) = ProximalAlgorithms.PANOCplus(
     directions = subsolver_directions,
     maxit = subsolver_maxit,
     freq = subsolver_maxit,
-    minimum_gamma = subsolver_minimum_gamma,
-    verbose = true;
+    minimum_gamma = subsolver_minimum_gamma;
     kwargs...,
 )
 solver(f, g, c, D, x0, y0; kwargs...) = Bazinga.alps(
@@ -191,7 +197,7 @@ solver(f, g, c, D, x0, y0; kwargs...) = Bazinga.alps(
     D,
     x0,
     y0,
-    verbose = false,
+    verbose = true,
     epsilon = T(1e-3),
     subsolver = subsolver,
     subsolver_maxit = subsolver_maxit;
@@ -199,6 +205,7 @@ solver(f, g, c, D, x0, y0; kwargs...) = Bazinga.alps(
 )
 
 for N in Nvec
+    @info "N = $(N)"
     if problem_name == "obstacle_l2"
         f = SmoothCostObstacleL2( N )
         g = NonsmoothCostObstacleL2( N )
@@ -206,7 +213,7 @@ for N in Nvec
         D = SetObstacle()
         nx = 3*N
         ny = N
-    elseif problem_name == "obstacle_l2_red"
+    elseif problem_name == "obstacle_l2red"
         f = SmoothCostObstacleL2( N )
         g = NonsmoothCostObstacleL2Red( N )
         c = ConstraintObstacleRed( N )
@@ -220,7 +227,7 @@ for N in Nvec
         D = SetObstacle()
         nx = 3*N
         ny = N
-    elseif problem_name == "obstacle_l1_red"
+    elseif problem_name == "obstacle_l1red"
         f = SmoothCostObstacleL1( N )
         g = NonsmoothCostObstacleRedL1( N )
         c = ConstraintObstacleRed( N )
@@ -232,8 +239,9 @@ for N in Nvec
     end
 
     for TOL in TOLvec
+        @info "TOL = $(TOL)"
 
-        out = solver(f, g, c, D, ones(T, nx), zeros(T, ny), tol=TOL)
+        out = solver(f, g, c, D, 2 .* ones(T, nx), zeros(T, ny), tol=TOL)
 
         xsol = out[1]
         objx = f(xsol)
