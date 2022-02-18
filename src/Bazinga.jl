@@ -13,7 +13,17 @@ export eval!, jtprod, jtprod!
 export ClosedSet
 export proj, proj!, dist, dist!
 
+ClosedSet(f::ProximableFunction) = begin
+    if !(ProximalOperators.is_set(f))
+        @error "$(f) is not a set!"
+    end
+    return IndicatorSet(f)
+end
+
 # projections
+include("projections/zeroSet.jl")
+include("projections/freeSet.jl")
+include("projections/indicatorSet.jl")
 include("projections/orConstraints.jl")
 include("projections/vanishingConstraints.jl")
 
