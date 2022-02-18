@@ -31,10 +31,13 @@ function project_onto_VC_set!(z, x)
     else
         if x[2] >= 0
             z .= x
-        else
+        else # x1 > 0 and x2 < 0
             if x[1] + x[2] > 0
                 z[1] = x[1]
-            else
+            elseif x[1] + x[2] < 0
+                z[2] = x[2]
+            else # x1 + x2 = 0, set-valued case
+                #z[1] = x[1]
                 z[2] = x[2]
             end
         end

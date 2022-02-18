@@ -1,5 +1,27 @@
 """
 	rosenbrock : example from Bazinga.jl
+
+    Academic example of involving a nonsmooth Rosenbrock-like objective function
+    and either-or constraints.
+
+	Original formulations:
+
+	minimize      10 * (x2 + 1 - (x1 + 1)^2)^2 + |x1|
+	subject to    x2 <= - x1   or   x2 >= x1
+
+	Reformulation as a constrained structured problem in the form
+
+	minimize     f(x) + g(x)
+	subject to   c(x) in D
+
+	where
+	    f(x) = 10 * (x2 + 1 - (x1 + 1)^2)^2
+	    g(x) = |x1|
+	    c(x) = [ - x1 - x2 ]
+	           [ - x1 + x2 ]
+	    D    = Deo
+	with
+	    Deo  = { (a,b) | a >= 0 } ∪ { (a,b) | b >= 0 }
 """
 
 using ProximalOperators
@@ -79,9 +101,9 @@ else
     @error "Unknown acceleration"
 end
 
-subsolver_maxit = 1_000
+subsolver_maxit = 1_000_000
 subsolver_minimum_gamma = eps(T)
-subsolver(; kwargs...) = ProximalAlgorithms.PANOC(
+subsolver(; kwargs...) = ProximalAlgorithms.PANOCplus(
     directions = subsolver_directions,
     maxit = subsolver_maxit,
     freq = subsolver_maxit,
@@ -105,9 +127,9 @@ _ = solver( f, g, c, D, ones(T, nx), zeros(T, ny) )
 ################################################################################
 # grid of starting points
 ################################################################################
+using Plots
 using DataFrames
 using Printf
-using Plots
 using CSV
 using Statistics
 

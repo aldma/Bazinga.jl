@@ -7,10 +7,10 @@
 	Original formulations:
 
 	minimize      4*x1 + 2*x2
-	subject to    x1                       >= 0
-	              x2                       >= 0
-	              (x1 + x2 - 5*sqrt(2))*x1 >= 0
-	              (x1 + x2 - 5        )*x2 >= 0
+	subject to    x1 >= 0
+	              x2 >= 0
+	              x1 > 0   =>   x1 + x2 - 5*sqrt(2) >= 0
+	              x2 > 0   =>   x1 + x2 - 5         >= 0
 
 	Reformulation as a constrained structured problem in the form
 
@@ -27,6 +27,7 @@
 	    D    = { c | (c1,c2) in Dvc, (c3,c4) in Dvc }
 	with
 	    Dvc  = { (a,b) | a >= 0, a*b >= 0 }
+             = { (a,b) | a = 0 } ∪ { (a,b) | a >= 0, b >= 0 }
 
     References:
     [Hoh09]     Hoheisel, "Mathematical Programs with Vanishing Constraints",
@@ -89,12 +90,12 @@ ny = 4
 subsolver_directions = ProximalAlgorithms.LBFGS(5)
 subsolver_maxit = 1_000
 subsolver_minimum_gamma = eps(T)
-subsolver(; kwargs...) = ProximalAlgorithms.PANOC(
+subsolver(; kwargs...) = ProximalAlgorithms.PANOCplus(
     directions = subsolver_directions,
     maxit = subsolver_maxit,
     freq = subsolver_maxit,
     minimum_gamma = subsolver_minimum_gamma,
-    verbose = false;
+    verbose = true;
     kwargs...,
 )
 solver(f, g, c, D, x0, y0) = Bazinga.alps(
@@ -113,8 +114,8 @@ _ = solver( f, g, c, D, ones(T, nx), zeros(T, ny) )
 ################################################################################
 # grid of starting points
 ################################################################################
-using DataFrames
 using Plots
+using DataFrames
 using Printf
 using CSV
 using Statistics
@@ -127,7 +128,7 @@ xmax = 20.0
 
 data = DataFrame()
 
-xgrid = [(i, j) for i = xmin:0.5:xmax, j = xmin:0.5:xmax];
+xgrid = [(i, j) for i = xmin:1.0:xmax, j = xmin:1.0:xmax];
 xgrid = xgrid[:];
 ntests = length(xgrid)
 

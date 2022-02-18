@@ -162,9 +162,9 @@ end
 using DataFrames
 using CSV
 
-problem_name = "obstacle_l1" # obstacle_ + l1, l2 + _red
-Nvec = [32; 64] # discretization intervals
-TOLvec = [1e-4; 1e-5] # tolerance
+problem_name = "obstacle_l1_red" # obstacle_l1, obstacle_l1_red
+Nvec = [16; 32; 48; 64; 80; 96] # discretization intervals
+TOLvec = 10 .^ collect(range(-3,-6,length=13)) # tolerance
 
 filename = problem_name
 filepath = joinpath(@__DIR__, "results", filename)
@@ -174,9 +174,9 @@ data = DataFrame()
 T = Float64
 
 subsolver_directions = ProximalAlgorithms.LBFGS(5)
-subsolver_maxit = 10_000
+subsolver_maxit = 1_000_000
 subsolver_minimum_gamma = eps(T)
-subsolver(; kwargs...) = ProximalAlgorithms.PANOC(
+subsolver(; kwargs...) = ProximalAlgorithms.PANOCplus(
     directions = subsolver_directions,
     maxit = subsolver_maxit,
     freq = subsolver_maxit,
@@ -192,13 +192,11 @@ solver(f, g, c, D, x0, y0; kwargs...) = Bazinga.alps(
     x0,
     y0,
     verbose = false,
+    epsilon = T(1e-3),
     subsolver = subsolver,
     subsolver_maxit = subsolver_maxit;
     kwargs...,
 )
-
-#global nx = nothing
-#global ny = nothing
 
 for N in Nvec
     if problem_name == "obstacle_l2"
