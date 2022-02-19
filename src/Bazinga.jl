@@ -23,6 +23,7 @@ include("projections/freeSet.jl")
 include("projections/indicatorSet.jl")
 include("projections/orConstraints.jl")
 include("projections/vanishingConstraints.jl")
+include("projections/complementarityConstraints.jl")
 
 # utilities
 include("utilities/auglagfun.jl")

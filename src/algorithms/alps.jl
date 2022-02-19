@@ -12,7 +12,9 @@ function alps(
     x0::AbstractArray,
     y0::AbstractArray;
     tol::Real = eltype(x0)(1e-6),
-    epsilon::Real = sqrt(tol),
+    tol_prim::Real = tol,
+    tol_dual::Real = tol,
+    epsilon::Real = sqrt(tol_dual),
     maxit::Int = 100,
     theta::Real = 0.8,
     kappamu::Real = 0.5,
@@ -58,7 +60,7 @@ function alps(
         # safeguarded dual estimate
         dual_safeguard(y, cx) # in-place
         # inner tolerance
-        epsilon = max(kappaepsilon * epsilon, tol)
+        epsilon = max(kappaepsilon * epsilon, tol_dual)
         # solve subproblem
         sub_solver = subsolver(tol = epsilon, verbose=verbose)
         AugLagUpdate!(alFun, mu, y)
@@ -82,11 +84,11 @@ function alps(
         # penalty parameters
         if norm_res_prim_old === nothing
             #
-        elseif norm_res_prim > max(theta * norm_res_prim_old, tol)
+        elseif norm_res_prim > max(theta * norm_res_prim_old, tol_prim)
             mu .*= kappamu
         end
         # termination checks
-        solved = (epsilon <= tol && sub_solved) && norm_res_prim <= tol
+        solved = (epsilon <= tol_dual && sub_solved) && norm_res_prim <= tol_prim
         tired = tot_it >= maxit
         broken = isnan(objx)
     end
