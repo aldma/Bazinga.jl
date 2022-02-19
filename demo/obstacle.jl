@@ -13,7 +13,7 @@
                 DOI: 10.1137/20M1321413.
 """
 
-using ProximalOperators
+#using ProximalOperators
 using LinearAlgebra
 using Bazinga
 using ProximalAlgorithms
@@ -21,35 +21,35 @@ using ProximalAlgorithms
 ###################################################################################
 # problem definition
 ###################################################################################
-struct SmoothCostObstacleL2 <: ProximalOperators.ProximableFunction
+struct SmoothCostObstacleL2 <: Bazinga.ProximableFunction
     N::Int
 end
 function (f::SmoothCostObstacleL2)(x)
     return 0.5 * norm(x[1:2*f.N], 2)^2 - sum(x[f.N+1:2*f.N])
 end
-function ProximalOperators.gradient!(dfx, f::SmoothCostObstacleL2, x)
+function Bazinga.gradient!(dfx, f::SmoothCostObstacleL2, x)
     dfx .= 0.0
     dfx[1:f.N] .= x[1:f.N]
     dfx[f.N+1:2*f.N] .= x[f.N+1:2*f.N] .- 1.0
     return 0.5 * norm(x[1:2*f.N], 2)^2 - sum(x[f.N+1:2*f.N])
 end
 
-struct SmoothCostObstacleL1 <: ProximalOperators.ProximableFunction
+struct SmoothCostObstacleL1 <: Bazinga.ProximableFunction
     N::Int
 end
 function (f::SmoothCostObstacleL1)(x)
     return 0.5 * sum( x[f.N+1:2*f.N].^2 ) - sum( x[f.N+1:2*f.N] )
 end
-function ProximalOperators.gradient!(dfx, f::SmoothCostObstacleL1, x)
+function Bazinga.gradient!(dfx, f::SmoothCostObstacleL1, x)
     dfx .= 0.0
     dfx[f.N+1:2*f.N] .= x[f.N+1:2*f.N] .- 1.0
     return 0.5 * sum( x[f.N+1:2*f.N].^2 ) - sum( x[f.N+1:2*f.N] )
 end
 
-struct NonsmoothCostObstacleL2 <: ProximalOperators.ProximableFunction
+struct NonsmoothCostObstacleL2 <: Bazinga.ProximableFunction
     N::Int
 end
-function ProximalOperators.prox!(y, g::NonsmoothCostObstacleL2, x, gamma)
+function Bazinga.prox!(y, g::NonsmoothCostObstacleL2, x, gamma)
     y .= max.(0, x)
     for i = 1:g.N
         if y[g.N+i] > y[2*g.N+i]
@@ -61,12 +61,12 @@ function ProximalOperators.prox!(y, g::NonsmoothCostObstacleL2, x, gamma)
     return zero(eltype(x))
 end
 
-struct NonsmoothCostObstacleL1 <: ProximalOperators.ProximableFunction
+struct NonsmoothCostObstacleL1 <: Bazinga.ProximableFunction
     N::Int
 end
-function ProximalOperators.prox!(y, g::NonsmoothCostObstacleL1, x, gamma)
+function Bazinga.prox!(y, g::NonsmoothCostObstacleL1, x, gamma)
     y[1:g.N] .= max.(0, x[1:g.N] .- gamma)
-    y[g.N+1:end] .= max.(0, x[g.N+1:end])
+    y[g.N+1:3*g.N] .= max.(0, x[g.N+1:3*g.N])
     for i = 1:g.N
         if y[g.N+i] > y[2*g.N+i]
             y[2*g.N+i] = 0
@@ -77,6 +77,16 @@ function ProximalOperators.prox!(y, g::NonsmoothCostObstacleL1, x, gamma)
             #y[2*g.N+i] = 0
         end
     end
+    return sum( y[1:g.N] )
+end
+
+struct NonsmoothCostObstacleRedL1 <: Bazinga.ProximableFunction
+    N::Int
+end
+function Bazinga.prox!(y, g::NonsmoothCostObstacleRedL1, x, gamma)
+    y[1:g.N] .= max.(0, x[1:g.N] .- gamma)
+    y[g.N+1:2*g.N] .= x[g.N+1:2*g.N]
+    #y[g.N+1:2*g.N] .= max.(0, x[g.N+1:2*g.N])
     return sum( y[1:g.N] )
 end
 
@@ -108,21 +118,12 @@ function Bazinga.proj!(z, D::SetObstacle, x)
     return nothing
 end
 
-struct NonsmoothCostObstacleL2Red <: ProximalOperators.ProximableFunction
+struct NonsmoothCostObstacleL2Red <: Bazinga.ProximableFunction
     N::Int
 end
-function ProximalOperators.prox!(y, g::NonsmoothCostObstacleL2Red, x, gamma)
+function Bazinga.prox!(y, g::NonsmoothCostObstacleL2Red, x, gamma)
     y .= max.(0, x)
     return zero(eltype(x))
-end
-
-struct NonsmoothCostObstacleRedL1 <: ProximalOperators.ProximableFunction
-    N::Int
-end
-function ProximalOperators.prox!(y, g::NonsmoothCostObstacleRedL1, x, gamma)
-    y[1:g.N] .= max.(0, x[1:g.N] .- gamma)
-    y[g.N+1:2*g.N] .= max.(0, x[g.N+1:2*g.N])
-    return sum( y[1:g.N] )
 end
 
 struct ConstraintObstacleRed <: SmoothFunction
@@ -134,7 +135,7 @@ function ConstraintObstacleRed(N)
     return ConstraintObstacleRed(N, c.A)
 end
 function Bazinga.eval!(cx, c::ConstraintObstacleRed, x)
-    cx[1:c.N] .= x[1:c.N] .+ c.A * x[c.N+1:2*c.N]
+    cx[1:c.N] .= x[1:c.N] + c.A * x[c.N+1:2*c.N]
     cx[c.N+1:2*c.N] .= x[c.N+1:2*c.N]
     return nothing
 end
@@ -149,7 +150,10 @@ struct SetObstacleRed <: ClosedSet
 end
 function Bazinga.proj!(z, D::SetObstacleRed, x)
     # complementarity constraint
-    z .= max.(0, x)
+    for i = 1:D.N
+        Bazinga.project_onto_CC_set!(@view(z[[i, i+D.N]]), x[[i, i+D.N]])
+    end
+    #=z .= max.(0, x)
     for i = 1:D.N
         if z[i] > z[i+D.N]
             z[i+D.N] = 0
@@ -159,7 +163,7 @@ function Bazinga.proj!(z, D::SetObstacleRed, x)
             z[i] = 0
             #z[i+D.N] = 0
         end
-    end
+    end=#
     return nothing
 end
 
@@ -171,7 +175,7 @@ using CSV
 
 problem_name = "obstacle_l1" # obstacle_l1, obstacle_l1red
 Nvec = [16; 32; 48; 64] # discretization intervals
-TOLvec = 10 .^ collect(range(-3,-6,length=13)) # tolerance
+TOLvec = 10 .^ collect(range(-3,-5,length=9)) # tolerance
 
 filename = problem_name
 filepath = joinpath(@__DIR__, "results", filename)
@@ -198,7 +202,6 @@ solver(f, g, c, D, x0, y0; kwargs...) = Bazinga.alps(
     x0,
     y0,
     verbose = true,
-    epsilon = T(1e-3),
     subsolver = subsolver,
     subsolver_maxit = subsolver_maxit;
     kwargs...,
