@@ -46,16 +46,24 @@ struct SmoothCostMPVCA <: ProximalOperators.ProximableFunction
     c::AbstractVector
 end
 function (f::SmoothCostMPVCA)(x)
-    return dot(f.c, x)
+    return dot(f.c, x[1:2])
 end
 function ProximalOperators.gradient!(dfx, f::SmoothCostMPVCA, x)
-    dfx .= f.c
-    return dot(f.c, x)
+    dfx .= 0
+    dfx[1:2] .= f.c
+    return dot(f.c, x[1:2])
 end
 
 struct NonsmoothCostMPVCA <: ProximalOperators.ProximableFunction end
-function ProximalOperators.prox!(y, g::NonsmoothCostMPVCA, x, gamma)
-    y .= max.(0, x)
+function ProximalOperators.prox!(z, g::NonsmoothCostMPVCA, x, gamma)
+    z .= max.(0, x)
+    return zero(eltype(x))
+end
+
+struct NonsmoothCostMPVCAslack <: ProximalOperators.ProximableFunction end
+function ProximalOperators.prox!(z, g::NonsmoothCostMPVCAslack, x, gamma)
+    Bazinga.project_onto_VC_set!(@view(z[[1, 3]]), x[[1, 3]])
+    Bazinga.project_onto_VC_set!(@view(z[[2, 4]]), x[[2, 4]])
     return zero(eltype(x))
 end
 
@@ -69,6 +77,16 @@ function Bazinga.jtprod!(jtv, c::ConstraintMPVCA, x, v)
     return nothing
 end
 
+struct ConstraintMPVCAslack <: SmoothFunction end
+function Bazinga.eval!(cx, c::ConstraintMPVCAslack, x)
+    cx .= [x[1] + x[2] - 5.0 * sqrt(2.0) - x[3]; x[1] + x[2] - 5.0 - x[4]]
+    return nothing
+end
+function Bazinga.jtprod!(jtv, c::ConstraintMPVCAslack, x, v)
+    jtv .= [v[1] + v[2]; v[1] + v[2]; -v[1]; -v[2]]
+    return nothing
+end
+
 struct SetMPVCA <: ClosedSet end
 function Bazinga.proj!(z, D::SetMPVCA, cx)
     Bazinga.project_onto_VC_set!(@view(z[1:2]), cx[1:2])
@@ -77,16 +95,25 @@ function Bazinga.proj!(z, D::SetMPVCA, cx)
 end
 
 # iter
-problem_name = "mpvca"
+problem_name = "mpvca" # mpvca, mpvca_slack
 
 T = Float64
 f = SmoothCostMPVCA(T.([4; 2]))
-g = NonsmoothCostMPVCA()
-c = ConstraintMPVCA()
-D = SetMPVCA()
-nx = 2
-ny = 4
+if problem_name == "mpvca_slack"
+    g = NonsmoothCostMPVCAslack()
+    c = ConstraintMPVCAslack()
+    D = Bazinga.ZeroSet()
+    nx = 4
+    ny = 2
+else
+    g = NonsmoothCostMPVCA()
+    c = ConstraintMPVCA()
+    D = SetMPVCA()
+    nx = 2
+    ny = 4
+end
 
+# solver setup
 subsolver_directions = ProximalAlgorithms.LBFGS(5)
 subsolver_maxit = 1_000
 subsolver_minimum_gamma = eps(T)
@@ -94,8 +121,7 @@ subsolver(; kwargs...) = ProximalAlgorithms.PANOCplus(
     directions = subsolver_directions,
     maxit = subsolver_maxit,
     freq = subsolver_maxit,
-    minimum_gamma = subsolver_minimum_gamma,
-    verbose = true;
+    minimum_gamma = subsolver_minimum_gamma;
     kwargs...,
 )
 solver(f, g, c, D, x0, y0) = Bazinga.alps(
@@ -105,11 +131,11 @@ solver(f, g, c, D, x0, y0) = Bazinga.alps(
     D,
     x0,
     y0,
-    verbose = false,
+    verbose = true,
     subsolver = subsolver,
     subsolver_maxit = subsolver_maxit,
 )
-_ = solver( f, g, c, D, ones(T, nx), zeros(T, ny) )
+_ = solver(f, g, c, D, ones(T, nx), zeros(T, ny))
 
 ################################################################################
 # grid of starting points
@@ -133,7 +159,16 @@ xgrid = xgrid[:];
 ntests = length(xgrid)
 
 for i = 1:ntests
-    x0 = [xgrid[i][1]; xgrid[i][2]]
+    if problem_name == "mpvca_slack"
+        x0 = [
+            xgrid[i][1]
+            xgrid[i][2]
+            xgrid[i][1] + xgrid[i][2] - 5 * sqrt(2)
+            xgrid[i][1] + xgrid[i][2] - 5
+        ]
+    else
+        x0 = [xgrid[i][1]; xgrid[i][2]]
+    end
     y0 = zeros(T, ny)
 
     out = solver(f, g, c, D, x0, y0)
@@ -184,6 +219,23 @@ feasset = Shape([
     (0.0, xmax),
 ])
 hplt = plot(feasset, color = plot_color(:grey, 0.4), linewidth = 0, legend = false)
+plot!(
+    hplt,
+    [0, 0],
+    [5, 5 * sqrt(2)],
+    color = plot_color(:grey, 0.4),
+    linewidth = 5,
+    legend = false,
+)
+scatter!(
+    hplt,
+    [0],
+    [0],
+    color = plot_color(:grey, 0.4),
+    marker = :circle,
+    markerstrokewidth = 5,
+    legend = false,
+)
 xlims!(xmin, xmax)
 ylims!(xmin, xmax)
 
@@ -199,7 +251,7 @@ for i = 1:ntests
             hplt,
             [xi[1]],
             [xi[2]],
-            color = :blue,
+            color = :black,
             marker = :circle,
             markerstrokewidth = 0,
             legend = false,
@@ -211,7 +263,7 @@ for i = 1:ntests
             [xi[1]],
             [xi[2]],
             color = :red,
-            marker = :diamond,
+            marker = :cross,
             markerstrokewidth = 0,
             legend = false,
         )
