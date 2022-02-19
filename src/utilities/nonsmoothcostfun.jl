@@ -1,5 +1,5 @@
-mutable struct NonsmoothCostFun <: ProximalOperators.ProximableFunction
-    g::ProximableFunction
+mutable struct NonsmoothCostFun{Tg} <: ProximableFunction where {Tg}
+    g::Tg
     gamma::Real                     # proximal stepsize
     gz::Real                        # g at z, z being the proximal update
 end
@@ -14,8 +14,8 @@ end
 """
     gz = prox!( z, g, x, gamma )
 """
-function ProximalOperators.prox!( z, g::NonsmoothCostFun, x, gamma)
-    gz = ProximalOperators.prox!(z, g.g, x, gamma)
+function prox!( z, g::NonsmoothCostFun, x, gamma)
+    gz = prox!(z, g.g, x, gamma)
     g.gamma = gamma
     g.gz = gz
     return gz

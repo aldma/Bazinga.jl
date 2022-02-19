@@ -24,7 +24,6 @@
 	    Deo  = { (a,b) | a >= 0 } ∪ { (a,b) | b >= 0 }
 """
 
-using ProximalOperators
 using LinearAlgebra
 using Bazinga
 using ProximalAlgorithms
@@ -32,23 +31,23 @@ using ProximalAlgorithms
 ###################################################################################
 # problem definition
 ###################################################################################
-struct SmoothCostRosenbrock <: ProximalOperators.ProximableFunction
+struct SmoothCostRosenbrock <: Bazinga.ProximableFunction
     w::Real
 end
 function (f::SmoothCostRosenbrock)(x)
     return f.w * (x[2] + 1 - (x[1] + 1)^2)^2
 end
-function ProximalOperators.gradient!(dfx, f::SmoothCostRosenbrock, x)
+function Bazinga.gradient!(dfx, f::SmoothCostRosenbrock, x)
     tmp = x[2] + 1 - (x[1] + 1)^2
     dfx[1] = -4 * f.w * tmp * (x[1] + 1)
     dfx[2] = 2 * f.w * tmp
     return f.w * tmp^2
 end
 
-struct NonsmoothCostRosenbrock <: ProximalOperators.ProximableFunction
+struct NonsmoothCostRosenbrock <: Bazinga.ProximableFunction
     lambda::Real
 end
-function ProximalOperators.prox!(y, g::NonsmoothCostRosenbrock, x, gamma)
+function Bazinga.prox!(y, g::NonsmoothCostRosenbrock, x, gamma)
     gl = gamma * g.lambda
     y[1] = if abs(x[1]) <= gl
         0.0
@@ -80,7 +79,7 @@ end
 ################################################################################
 
 problem_name = "rosenbrock"
-subsolver_name = "lbfgs"
+subsolver_name = "noaccel"
 
 T = Float64
 
@@ -101,14 +100,13 @@ else
     @error "Unknown acceleration"
 end
 
-subsolver_maxit = 1_000_000
+subsolver_maxit = 4_000
 subsolver_minimum_gamma = eps(T)
 subsolver(; kwargs...) = ProximalAlgorithms.PANOCplus(
     directions = subsolver_directions,
     maxit = subsolver_maxit,
     freq = subsolver_maxit,
-    minimum_gamma = subsolver_minimum_gamma,
-    verbose = true;
+    minimum_gamma = subsolver_minimum_gamma;
     kwargs...,
 )
 solver(f, g, c, D, x0, y0) = Bazinga.alps(
@@ -118,7 +116,7 @@ solver(f, g, c, D, x0, y0) = Bazinga.alps(
     D,
     x0,
     y0,
-    verbose = false,
+    verbose = true,
     subsolver = subsolver,
     subsolver_maxit = subsolver_maxit,
 )
@@ -133,7 +131,7 @@ using Printf
 using CSV
 using Statistics
 
-filename = problem_name * "_" * subsolver_name
+filename = problem_name * "_" * subsolver_name * "_" * string(subsolver_maxit)
 filepath = joinpath(@__DIR__, "results", filename)
 
 xmin = -5.0

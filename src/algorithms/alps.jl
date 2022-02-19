@@ -5,8 +5,8 @@
 default_subsolver = ProximalAlgorithms.PANOCplus
 
 function alps(
-    f::ProximalOperators.ProximableFunction,
-    g::ProximalOperators.ProximableFunction,
+    f::Tf,
+    g::Tg,
     c::SmoothFunction,
     D::ClosedSet,
     x0::AbstractArray,
@@ -21,7 +21,7 @@ function alps(
     dual_safeguard::Function = default_dual_safeguard!,
     subsolver::TS = default_subsolver,
     subsolver_maxit::Int = 1_000_000_000,
-) where {TS}
+) where {Tf,Tg,TS}
     start_time = time()
     T = eltype(x0)
 

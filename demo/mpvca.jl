@@ -34,7 +34,6 @@
                 PhD thesis, University of Würzburg, 2009.
 """
 
-using ProximalOperators
 using LinearAlgebra
 using Bazinga
 using ProximalAlgorithms
@@ -42,26 +41,26 @@ using ProximalAlgorithms
 ################################################################################
 # problem definition
 ################################################################################
-struct SmoothCostMPVCA <: ProximalOperators.ProximableFunction
+struct SmoothCostMPVCA <: Bazinga.ProximableFunction
     c::AbstractVector
 end
 function (f::SmoothCostMPVCA)(x)
     return dot(f.c, x[1:2])
 end
-function ProximalOperators.gradient!(dfx, f::SmoothCostMPVCA, x)
+function Bazinga.gradient!(dfx, f::SmoothCostMPVCA, x)
     dfx .= 0
     dfx[1:2] .= f.c
     return dot(f.c, x[1:2])
 end
 
-struct NonsmoothCostMPVCA <: ProximalOperators.ProximableFunction end
-function ProximalOperators.prox!(z, g::NonsmoothCostMPVCA, x, gamma)
+struct NonsmoothCostMPVCA <: Bazinga.ProximableFunction end
+function Bazinga.prox!(z, g::NonsmoothCostMPVCA, x, gamma)
     z .= max.(0, x)
     return zero(eltype(x))
 end
 
-struct NonsmoothCostMPVCAslack <: ProximalOperators.ProximableFunction end
-function ProximalOperators.prox!(z, g::NonsmoothCostMPVCAslack, x, gamma)
+struct NonsmoothCostMPVCAslack <: Bazinga.ProximableFunction end
+function Bazinga.prox!(z, g::NonsmoothCostMPVCAslack, x, gamma)
     Bazinga.project_onto_VC_set!(@view(z[[1, 3]]), x[[1, 3]])
     Bazinga.project_onto_VC_set!(@view(z[[2, 4]]), x[[2, 4]])
     return zero(eltype(x))

@@ -1,20 +1,22 @@
 module Bazinga
 
 using LinearAlgebra
-using ProximalOperators
-import ProximalOperators: prox!, gradient!
+import ProximalCore: prox, prox!, gradient, gradient!
 using ProximalAlgorithms
 
-abstract type SmoothFunction <: ProximableFunction end
-abstract type ClosedSet <: ProximableFunction end
+abstract type ProximableFunction end
+abstract type SmoothFunction end
+abstract type ClosedSet end
 
 export SmoothFunction
 export eval!, jtprod, jtprod!
 export ClosedSet
 export proj, proj!, dist, dist!
+export ProximableFunction
+export prox, prox!, gradient, gradient!
 
-ClosedSet(f::ProximableFunction) = begin
-    if !(ProximalOperators.is_set(f))
+ClosedSet(f) = begin
+    if !ProximalOperators.is_set(f)
         @error "$(f) is not a set!"
     end
     return IndicatorSet(f)

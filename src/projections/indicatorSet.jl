@@ -1,11 +1,11 @@
 # indicator set
 # closed set from indicator function
 
-struct IndicatorSet <: ClosedSet
-    f::ProximableFunction
+struct IndicatorSet{P} <: ClosedSet where {P}
+    f::P
 end
 
-function Bazinga.proj!(z, f::IndicatorSet, x)
-    ProximalOperators.prox!(z, f.f, x)
+function proj!(z, f::IndicatorSet, x)
+    prox!(z, f.f, x)
     return nothing
 end

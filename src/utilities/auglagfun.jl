@@ -8,8 +8,8 @@ returns a function ´al_f´ which represents
   L(x) = f(x) + 1/(2 mu) dist_D^2( c(x) + mu y ) - (mu/2) ||y||^2
 
 """
-mutable struct AugLagFun <: ProximalOperators.ProximableFunction
-    f::ProximableFunction                     # original problem
+mutable struct AugLagFun{Tf} <: ProximableFunction where {Tf}
+    f::Tf                     # original problem
     c::SmoothFunction
     D::ClosedSet
     mu::AbstractVector              # penalty parameters
@@ -57,7 +57,7 @@ end
 """
     lx = gradient!( dlx, al, x )
 """
-function ProximalOperators.gradient!( dlx, al::AugLagFun, x)
+function gradient!( dlx, al::AugLagFun, x)
     eval!(al.cx, al.c, x)                  # cx
     al.yupd .= al.cx .+ al.muy           # cx + mu .* y          (temporary)
     proj!(al.s, al.D, al.yupd)            # s ∈ proj_D( cx + mu .* y )
