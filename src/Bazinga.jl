@@ -15,12 +15,7 @@ export proj, proj!, dist, dist!
 export ProximableFunction
 export prox, prox!, gradient, gradient!
 
-ClosedSet(f) = begin
-    if !ProximalOperators.is_set(f)
-        @error "$(f) is not a set!"
-    end
-    return IndicatorSet(f)
-end
+ClosedSet(f) = IndicatorSet(f)
 
 # projections
 include("projections/zeroSet.jl")
