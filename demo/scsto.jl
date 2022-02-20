@@ -168,7 +168,7 @@ problem_name = "scsto_box" # scsto_free, scsto_box
 ngrid = 200 # default 200
 
 # switching cost
-swc_vector = [1e-6; 1e-5; 1e-4; 0.001; 0.01; 0.1; 1.0] # default [0.0; 1e-3; 0.01; 0.1; 1.0]
+swc_vector = [1e-6; 1e-5; 1e-4; 0.001; 0.01; 0.1; 1.0; 10.0] # default 10.^[-6:1:1]
 ntests = length(swc_vector)
 
 # allocation
@@ -260,18 +260,26 @@ CSV.write(filepath * ".csv", df, header = true)
 df = DataFrame()
 for k = 1:ntests
     swc = swc_vector[k]
+    # swdelta
     xsol = swdelta[:,k]
-    smooth_cost = f(xsol)
-    nonsmooth_cost = swc * sum(xsol .> 0)
-    obj = smooth_cost + nonsmooth_cost
+    smoothcost = f(xsol)
+    nonsmoothcost = swc * sum(xsol .> 0)
+    obj = smoothcost + nonsmoothcost
     csol = zeros(T,ny)
     eval!(csol, c, xsol)
     psol = similar(csol)
     proj!(psol, D, csol)
     cviol = norm(csol - psol, Inf)
-    #push!(df, (swc, smooth_cost, nonsmooth_cost, obj, cviol))
-    #push!(df, Dict(:swc => swc, :f => smooth_cost, :g => nonsmooth_cost, :obj => obj, :cviol => cviol))
-    push!(df, (swc=swc, f=smooth_cost, g=nonsmooth_cost, obj=obj, cviol=cviol))
+    # swdelta clean
+    xsol = swdelta_clean[:,k]
+    smoothcostclean = f(xsol)
+    nonsmoothcostclean = swc * sum(xsol .> 0)
+    objclean = smoothcostclean + nonsmoothcostclean
+    eval!(csol, c, xsol)
+    proj!(psol, D, csol)
+    cviolclean = norm(csol - psol, Inf)
+    # store
+    push!(df, (swc=swc, f=smoothcost, g=nonsmoothcost, obj=obj, cviol=cviol, fclean=smoothcostclean, gclean=nonsmoothcostclean, objclean=objclean, cviolclean=cviolclean))
 end
 filename = problem_name * "_" * "summary"
 filepath = joinpath(@__DIR__, "results", filename)
