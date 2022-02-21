@@ -79,7 +79,7 @@ end
 ################################################################################
 
 problem_name = "rosenbrock"
-subsolver_name = "noaccel"
+subsolver_name = "lbfgs"
 
 T = Float64
 
@@ -100,7 +100,7 @@ else
     @error "Unknown acceleration"
 end
 
-subsolver_maxit = 4_000
+subsolver_maxit = 10_000
 subsolver_minimum_gamma = eps(T)
 subsolver(; kwargs...) = ProximalAlgorithms.PANOCplus(
     directions = subsolver_directions,
