@@ -99,6 +99,11 @@ function cleandelta(delta::Matrix)
     return deltanew
 end
 
+function store_csv_file(filepath, data)
+    CSV.write(filepath * ".csv", data, header = true)
+    return nothing
+end
+
 ################################################################################
 T = Float64
 
@@ -239,23 +244,21 @@ for k = 1:ntests
     df = DataFrame( t=t, x1=x1, x2=x2, u=u )
     filename = problem_name * "_" * string(swc_vector[k])
     filepath = joinpath(@__DIR__, "results", filename)
-    CSV.write(filepath * ".csv", df, header = true)
-
+    store_csv_file(filepath, df)
 end
 
 # csv file with solutions (switching intervals)
 df = DataFrame( swdelta, :auto )
 filename = problem_name * "_" * "swdelta"
 filepath = joinpath(@__DIR__, "results", filename)
-CSV.write(filepath * ".csv", df, header = true)
+store_csv_file(filepath, df)
 
 # csv file with `cleaned` solutions (switching intervals)
 swdelta_clean = cleandelta( swdelta )
 df = DataFrame( swdelta_clean, :auto )
 filename = problem_name * "_" * "swdelta_clean"
 filepath = joinpath(@__DIR__, "results", filename)
-CSV.write(filepath * ".csv", df, header = true)
-
+store_csv_file(filepath, df)
 
 df = DataFrame()
 for k = 1:ntests
@@ -283,27 +286,28 @@ for k = 1:ntests
 end
 filename = problem_name * "_" * "summary"
 filepath = joinpath(@__DIR__, "results", filename)
-CSV.write(filepath * ".csv", df, header = true)
+store_csv_file(filepath, df)
 
 ################################################################################
 
 # plot results
 hplt1 = plot()
 for k = 1:ntests
-    t = collect(range(t0, stop = tfsol[k], length = nt))
-    plot!(hplt1, t, xsim[1, :, k], legend=false)
+    plot!(hplt1, tsim[:,k], xsim[1, :, k], legend=false)
 end
 hplt2 = plot()
 for k = 1:ntests
-    t = collect(range(t0, stop = tfsol[k], length = nt))
-    plot!(hplt2, t, xsim[2, :, k], legend=false)
+    plot!(hplt2, tsim[:,k], xsim[2, :, k], legend=false)
 end
 hplt3 = plot()
 for k = 1:ntests
-    t = collect(range(t0, stop = tfsol[k], length = nt))
-    plot!(hplt3, t, usim[1, :, k], label = "swc = $(swc_vector[k])")
+    plot!(hplt3, tsim[:,k], usim[1, :, k], legend=false)
 end
-plot(hplt1,hplt2,hplt3, show=true)
+hplt4 = plot()
+for k = 1:ntests
+    plot!(hplt4, tsim[:,k], usim[1, :, k], label = "swc = $(swc_vector[k])")
+end
+plot(hplt1,hplt2,hplt3,hplt4, show=true)
 
 filename = problem_name
 filepath = joinpath(@__DIR__, "results", filename)
