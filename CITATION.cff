@@ -1,0 +1,22 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: >-
+  Bazinga.jl: a toolbox for constrained structured
+  optimization in Julia
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Alberto
+    family-names: De Marchi
+    affiliation: Universität der Bundeswehr München
+    orcid: 'https://orcid.org/0000-0002-3545-6898'
+repository-code: 'https://github.com/aldma/Bazinga.jl'
+keywords:
+  - Nonsmooth nonconvex optimization
+  - Mathematical programming
+  - Julia
+license: MIT
