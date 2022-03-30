@@ -21,8 +21,8 @@ mutable struct AugLagFun{Tf} <: ProximableFunction where {Tf}
     s::AbstractVector              # z ∈ proj_D( cx + mu * y )
     yupd::AbstractVector           # yupd := ( cx + mu * y - s ) / mu
     fx::Real                       # f at x
-    dfx::AbstractVector            # gradient_f at x
-    jtv::AbstractVector            # jtv := dcx' * yupd
+    dfx::AbstractArray             # gradient_f at x
+    jtv::AbstractArray             # jtv := dcx' * yupd
 end
 
 """
