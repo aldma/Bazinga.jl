@@ -183,7 +183,7 @@ for k in keys
 end
 
 for id = 1:ntests
-
+    @info "===== Problem $(id) of $(ntests) ====="
     Iobs, Jobs, Vobs = sampledDistanceMatrix(n, nobs, l)
     prob_c = ConstraintDMC(n, Iobs, Jobs, Vobs)
     nx = n * n
@@ -192,25 +192,25 @@ for id = 1:ntests
     prob_y0 = zeros(T, ny)
 
     # rank
-    @info "===== RANK ====="
+    @info "RANK:"
     out = solver(prob_g_rank, prob_c, prob_X0, prob_y0)
     push_out_to_data(data[:rank], id, out)
 
     # Schatten
-    @info "===== SCHATTEN ====="
+    @info "SCHATTEN NORM:"
     out = solver(prob_g_schatten, prob_c, prob_X0, prob_y0)
     push_out_to_data(data[:schatten], id, out)
     # Schatten + rank
-    @info "===== SCHATTEN + RANK ====="
+    @info "SCHATTEN NORM + RANK:"
     out = solver(prob_g_rank, prob_c, out[1], out[2])
     push_out_to_data(data[:schattenrank], id, out)
 
     # nuclear
-    @info "===== NUCLEAR ====="
+    @info "NUCLEAR NORM:"
     out = solver(prob_g_nuclear, prob_c, prob_X0, prob_y0)
     push_out_to_data(data[:nuclear], id, out)
     # nuclear + rank
-    @info "===== NUCLEAR + RANK ====="
+    @info "NUCLEAR NORM + RANK:"
     out = solver(prob_g_rank, prob_c, out[1], out[2])
     push_out_to_data(data[:nuclearrank], id, out)
 
@@ -225,7 +225,6 @@ end
 
 for k in keys
     @info uppercase(String(k))
-    @info "       rank: min $(minimum(data[k].rank)), max $(maximum(data[k].rank)), median  $(median(data[k].rank))"
-    @info " cviolation: min $(minimum(data[k].cviolation)), max $(maximum(data[k].cviolation)), median  $(median(data[k].cviolation))"
-    @info "inner iters: min $(minimum(data[k].subiters)), max $(maximum(data[k].subiters)), median  $(median(data[k].subiters))"
+    @info "    rank: min $(minimum(data[k].rank)), max $(maximum(data[k].rank)), median  $(median(data[k].rank))"
+    @info "subiters: min $(minimum(data[k].subiters)), max $(maximum(data[k].subiters)), median  $(median(data[k].subiters))"
 end
