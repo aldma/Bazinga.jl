@@ -25,7 +25,7 @@ using ProximalAlgorithms
 using ProximalOperators
 
 using Random
-Random.seed!(123456)
+Random.seed!(123)
 
 function sampledDistanceMatrix(n, nobs, l)
     T = Float64
@@ -143,13 +143,13 @@ using Statistics
 problem_name = "dmc"
 
 T = Float64
-n = 10 # 10, 15, 20, 25
+n = 20 # 10, 15, 20
 nsym = Int(n * (n - 1) / 2)
 nobs = Int(floor((n * n - nsym) / 3))
 l = 5
 pSchatten = 0.5
 
-ntests = 10
+ntests = 20
 
 prob_f = Bazinga.Zero()
 prob_g_nuclear = ProximalOperators.NuclearNorm()
