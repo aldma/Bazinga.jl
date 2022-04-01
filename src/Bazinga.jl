@@ -25,6 +25,10 @@ include("projections/orConstraints.jl")
 include("projections/vanishingConstraints.jl")
 include("projections/complementarityConstraints.jl")
 
+include("proxoperators/zero.jl")
+include("proxoperators/rank.jl")
+include("proxoperators/schattenNormLp.jl")
+
 # utilities
 include("utilities/auglagfun.jl")
 include("utilities/nonsmoothcostfun.jl")
