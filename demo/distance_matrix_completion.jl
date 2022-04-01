@@ -1,10 +1,11 @@
 """
-	matrix_completion : example from Bazinga.jl
+	distance_matrix_completion : example from Bazinga.jl
 
     Given some observed entries, find a complete matrix with minimum rank:
 
 	minimize      g(X)
-	subject to    X_{i,j} = Z_{i,j}  ∀(i,j) ∈ observations
+	subject to    X_{i,i} + X_{j,j} - X_{i,j} - X_{j,i} = D_{i,j}   ∀(i,j) ∈ observations
+                  X_{i,j} = X_{j,i}                                 ∀ i,j, j < i
 
 	Reformulation as a constrained structured problem in the form
 
@@ -13,9 +14,9 @@
 
 	where
 	    f(x) = 0
-	    g(x) = rank(X)
-	    c(x) = X_{i,j}[:] - Z_{i,j}[:]
-	    D    = 0
+	    c(x) = {observations and symmetry constraints}
+	    D    = {0}
+    and g ∈ {rank, Schatten-p-norm, nuclear norm}
 """
 
 using LinearAlgebra
@@ -40,8 +41,6 @@ function sampledDistanceMatrix(n, nobs, l)
 
     idx = randperm(n * n)[1:nobs]
     sort!(idx)
-    #idx = LinearIndices(D)[idx]
-    #d = D[idx]
     IJ = CartesianIndices(D)[idx]
     Iobs = zeros(Int, nobs)
     Jobs = zeros(Int, nobs)
@@ -71,7 +70,6 @@ end
 ###################################################################################
 # problem definition
 ###################################################################################
-
 struct ConstraintDMC <: SmoothFunction
     ny::Int
     nobs::Int
@@ -89,17 +87,12 @@ function ConstraintDMC(n::Int, iobs::Vector, jobs::Vector, vobs::Vector)
     # indices for  symmetry constraints
     isym = Vector{Int}(undef, nsym)
     jsym = Vector{Int}(undef, nsym)
-    #lidx = LinearIndices((n,n))
-    #idxsym = Vector{Int}(undef,nsym)
-    #idxsymt = Vector{Int}(undef,nsym)
     k = 0
     for i = 1:n
         for j = i+1:n
             k += 1
             isym[k] = i
             jsym[k] = j
-            #idxsymt[k] = lidx[i,j]
-            #idxsym[k] = lidx[j,i]
         end
     end
     return ConstraintDMC(ny, nobs, iobs, jobs, vobs, nsym, isym, jsym)
@@ -111,14 +104,12 @@ function Bazinga.eval!(cB::Vector, c::ConstraintDMC, B::Matrix)
         j = c.jobs[k]
         cB[k] = B[i, i] + B[j, j] - B[i, j] - B[j, i] - c.vobs[k]
     end
-    #...cx[1:c.nobs] .= X[c.idxobs] - c.valobs
     # symmetry
     for k = 1:c.nsym
         i = c.isym[k]
         j = c.jsym[k]
         cB[c.nobs+k] = B[i, j] - B[j, i]
     end
-    #...cB[c.nobs+1:c.nobs+c.nsym] .= B[c.idxsym] - B[c.idxsymt]
     return nothing
 end
 function Bazinga.jtprod!(jtv::Matrix, c::ConstraintDMC, B::Matrix, v::Vector)
@@ -139,8 +130,6 @@ function Bazinga.jtprod!(jtv::Matrix, c::ConstraintDMC, B::Matrix, v::Vector)
         jtv[i, j] += v[c.nobs+k]
         jtv[j, i] -= v[c.nobs+k]
     end
-    #...jtv[c.idxsym] .-= v[c.nobs+1:c.nobs+c.nsym]
-    #...jtv[c.idxsymt] .+= v[c.nobs+1:c.nobs+c.nsym]
     return nothing
 end
 
@@ -154,9 +143,10 @@ using Statistics
 problem_name = "dmc"
 
 T = Float64
-n = 10 # 50
-nobs = 30 # Int(floor(n*n*0.2)) # 150
-l = 3 # 3
+n = 10 # 10, 15, 20, 25
+nsym = Int(n * (n - 1) / 2)
+nobs = Int(floor((n * n - nsym) / 3))
+l = 5
 pSchatten = 0.5
 
 ntests = 10
@@ -169,8 +159,8 @@ prob_D = Bazinga.ZeroSet()
 
 subsolver(; kwargs...) = ProximalAlgorithms.PANOCplus(
     directions = ProximalAlgorithms.LBFGS(5),
-    maxit = 10_000,
-    freq = 10_000,
+    maxit = 1_000_000,
+    freq = 1_000_000,
     minimum_gamma = eps(T);
     kwargs...,
 )
@@ -201,29 +191,32 @@ for id = 1:ntests
     prob_X0 = randn(T, n, n)
     prob_y0 = zeros(T, ny)
 
-    # Schatten, nuclear norm, rank
-    for (prob_g, data) in [
-        (prob_g_schatten, data[:schatten]),
-        (prob_g_nuclear, data[:nuclear]),
-        (prob_g_rank, data[:rank]),
-    ]
-        out = solver(prob_g, prob_c, prob_X0, prob_y0)
-        push_out_to_data(data, id, out)
-    end
+    # rank
+    @info "===== RANK ====="
+    out = solver(prob_g_rank, prob_c, prob_X0, prob_y0)
+    push_out_to_data(data[:rank], id, out)
 
-    # Schatten + rank
+    # Schatten
+    @info "===== SCHATTEN ====="
     out = solver(prob_g_schatten, prob_c, prob_X0, prob_y0)
+    push_out_to_data(data[:schatten], id, out)
+    # Schatten + rank
+    @info "===== SCHATTEN + RANK ====="
     out = solver(prob_g_rank, prob_c, out[1], out[2])
     push_out_to_data(data[:schattenrank], id, out)
 
-    # nuclear + rank
+    # nuclear
+    @info "===== NUCLEAR ====="
     out = solver(prob_g_nuclear, prob_c, prob_X0, prob_y0)
+    push_out_to_data(data[:nuclear], id, out)
+    # nuclear + rank
+    @info "===== NUCLEAR + RANK ====="
     out = solver(prob_g_rank, prob_c, out[1], out[2])
     push_out_to_data(data[:nuclearrank], id, out)
 
 end
 
-filename = problem_name
+filename = problem_name * string(n)
 filepath = joinpath(@__DIR__, "results", filename)
 
 for k in keys
