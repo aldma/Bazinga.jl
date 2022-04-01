@@ -55,7 +55,7 @@ T = Float64
 rng = MersenneTwister(0)
 nx = 100
 ny = 20
-A = randn(rng, T, (ny,nx))
+A = randn(rng, T, (ny, nx))
 xtrue = sprandn(rng, T, nx, 0.1)
 b = A * xtrue
 
@@ -110,13 +110,13 @@ end
 objectiveFun0(x) = f(x) + g0(x)
 cviolationFun(x) = norm(c(x), Inf)
 
-print_info(x,y) = begin
+print_info(x, y) = begin
     obj = objectiveFun0(x)
     cvl = cviolationFun(x)
     @info "obj = $(obj), cviol = $(cvl)"
     return nothing
 end
-print_info(x) = print_info(x,0)
+print_info(x) = print_info(x, 0)
 
 print_info(xtrue)
 print_info(xsol0)

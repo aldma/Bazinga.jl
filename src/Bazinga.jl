@@ -46,12 +46,12 @@ end
 proj!
 
 # distance function
-function dist(f::ClosedSet, x, p::Real=2)
+function dist(f::ClosedSet, x, p::Real = 2)
     y = similar(x)
     return dist!(y, f, x)
 end
 
-function dist!(y, f::ClosedSet, x, p::Real=2)
+function dist!(y, f::ClosedSet, x, p::Real = 2)
     proj!(y, f, x)
     return norm(x - y, p)
 end

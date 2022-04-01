@@ -33,7 +33,7 @@ function Bazinga.prox!(z, f::NonsmoothCostFreeTimeLO, x, gamma)
     else
         a = f.swcost * gamma
         z .= x
-        z[.!(x .> sqrt( 2 * a ))] .= 0
+        z[.!(x .> sqrt(2 * a))] .= 0
         return f.swcost * sum(z .> 0)
     end
 end
@@ -80,9 +80,9 @@ using LinearAlgebra
 function cleandelta(delta::Vector)
     # !!! for binary controls only !!!
     # uvec = 0, 1, 0, 1, 0, 1, ...
-    deltanew = copy( delta )
-    n = length( delta )
-    for k in 1:n-2
+    deltanew = copy(delta)
+    n = length(delta)
+    for k = 1:n-2
         if deltanew[k] > 0.0 && deltanew[k+1] == 0.0
             deltanew[k+2] += deltanew[k]
             deltanew[k] = 0.0
@@ -91,10 +91,10 @@ function cleandelta(delta::Vector)
     return deltanew
 end
 function cleandelta(delta::Matrix)
-    deltanew = copy( delta )
-    m = size( delta,2 )
-    for k in 1:m
-        deltanew[:,k] .= cleandelta( delta[:,k] )
+    deltanew = copy(delta)
+    m = size(delta, 2)
+    for k = 1:m
+        deltanew[:, k] .= cleandelta(delta[:, k])
     end
     return deltanew
 end
@@ -185,16 +185,7 @@ tsim = Array{T}(undef, nt, ntests);
 xsim = Array{T}(undef, nstate, nt, ntests);
 usim = Array{T}(undef, nu, nt, ntests);
 
-prob = scstoproblem(
-    state0,
-    dynam,
-    d_dynam,
-    uvec,
-    ngrid = ngrid,
-    t0 = t0,
-    tf = tf,
-    Q = Q,
-)
+prob = scstoproblem(state0, dynam, d_dynam, uvec, ngrid = ngrid, t0 = t0, tf = tf, Q = Q)
 
 f = ScSTOSmoothCost(prob)
 c = ConstraintFreeTime()
@@ -222,7 +213,7 @@ for k = 1:ntests
     else
         x0 .= prob.meta.x0
     end
-    y0 = zeros(T,ny)
+    y0 = zeros(T, ny)
 
     # solve!
     out = solver(f, g, c, D, x0, y0)
@@ -232,30 +223,30 @@ for k = 1:ntests
     swdelta[:, k] .= xsol
     swtau[:, k], _ = gettau(prob, swdelta[:, k])
     tfsol[k] = t0 + sum(xsol)
-    tsim[:,k] = collect(range(t0, stop = tfsol[k], length = nt))
-    xsim[:, :, k], _, _, _ = simulate(prob, swtau[:, k], tsim[:,k])
-    usim[:, :, k], _ = simulateinput(prob, swtau[:, k], tsim[:,k])
+    tsim[:, k] = collect(range(t0, stop = tfsol[k], length = nt))
+    xsim[:, :, k], _, _, _ = simulate(prob, swtau[:, k], tsim[:, k])
+    usim[:, :, k], _ = simulateinput(prob, swtau[:, k], tsim[:, k])
 
     # csv files with trajectory (t,x1,x2,u)
-    t = tsim[:,k]
-    x1 = xsim[1,:,k]
-    x2 = xsim[2,:,k]
+    t = tsim[:, k]
+    x1 = xsim[1, :, k]
+    x2 = xsim[2, :, k]
     u = usim[1, :, k]
-    df = DataFrame( t=t, x1=x1, x2=x2, u=u )
+    df = DataFrame(t = t, x1 = x1, x2 = x2, u = u)
     filename = problem_name * "_" * string(swc_vector[k])
     filepath = joinpath(@__DIR__, "results", filename)
     store_csv_file(filepath, df)
 end
 
 # csv file with solutions (switching intervals)
-df = DataFrame( swdelta, :auto )
+df = DataFrame(swdelta, :auto)
 filename = problem_name * "_" * "swdelta"
 filepath = joinpath(@__DIR__, "results", filename)
 store_csv_file(filepath, df)
 
 # csv file with `cleaned` solutions (switching intervals)
-swdelta_clean = cleandelta( swdelta )
-df = DataFrame( swdelta_clean, :auto )
+swdelta_clean = cleandelta(swdelta)
+df = DataFrame(swdelta_clean, :auto)
 filename = problem_name * "_" * "swdelta_clean"
 filepath = joinpath(@__DIR__, "results", filename)
 store_csv_file(filepath, df)
@@ -264,17 +255,17 @@ df = DataFrame()
 for k = 1:ntests
     swc = swc_vector[k]
     # swdelta
-    xsol = swdelta[:,k]
+    xsol = swdelta[:, k]
     smoothcost = f(xsol)
     nonsmoothcost = swc * sum(xsol .> 0)
     obj = smoothcost + nonsmoothcost
-    csol = zeros(T,ny)
+    csol = zeros(T, ny)
     eval!(csol, c, xsol)
     psol = similar(csol)
     proj!(psol, D, csol)
     cviol = norm(csol - psol, Inf)
     # swdelta clean
-    xsol = swdelta_clean[:,k]
+    xsol = swdelta_clean[:, k]
     smoothcostclean = f(xsol)
     nonsmoothcostclean = swc * sum(xsol .> 0)
     objclean = smoothcostclean + nonsmoothcostclean
@@ -282,7 +273,20 @@ for k = 1:ntests
     proj!(psol, D, csol)
     cviolclean = norm(csol - psol, Inf)
     # store
-    push!(df, (swc=swc, f=smoothcost, g=nonsmoothcost, obj=obj, cviol=cviol, fclean=smoothcostclean, gclean=nonsmoothcostclean, objclean=objclean, cviolclean=cviolclean))
+    push!(
+        df,
+        (
+            swc = swc,
+            f = smoothcost,
+            g = nonsmoothcost,
+            obj = obj,
+            cviol = cviol,
+            fclean = smoothcostclean,
+            gclean = nonsmoothcostclean,
+            objclean = objclean,
+            cviolclean = cviolclean,
+        ),
+    )
 end
 filename = problem_name * "_" * "summary"
 filepath = joinpath(@__DIR__, "results", filename)
@@ -293,21 +297,21 @@ store_csv_file(filepath, df)
 # plot results
 hplt1 = plot()
 for k = 1:ntests
-    plot!(hplt1, tsim[:,k], xsim[1, :, k], legend=false)
+    plot!(hplt1, tsim[:, k], xsim[1, :, k], legend = false)
 end
 hplt2 = plot()
 for k = 1:ntests
-    plot!(hplt2, tsim[:,k], xsim[2, :, k], legend=false)
+    plot!(hplt2, tsim[:, k], xsim[2, :, k], legend = false)
 end
 hplt3 = plot()
 for k = 1:ntests
-    plot!(hplt3, tsim[:,k], usim[1, :, k], legend=false)
+    plot!(hplt3, tsim[:, k], usim[1, :, k], legend = false)
 end
 hplt4 = plot()
 for k = 1:ntests
-    plot!(hplt4, tsim[:,k], usim[1, :, k], label = "swc = $(swc_vector[k])")
+    plot!(hplt4, tsim[:, k], usim[1, :, k], label = "swc = $(swc_vector[k])")
 end
-plot(hplt1,hplt2,hplt3,hplt4, show=true)
+plot(hplt1, hplt2, hplt3, hplt4, show = true)
 
 filename = problem_name
 filepath = joinpath(@__DIR__, "results", filename)

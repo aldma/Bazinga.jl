@@ -64,7 +64,7 @@ function Bazinga.eval!(cx, c::ConstraintOR, x)
     return nothing
 end
 function Bazinga.jtprod!(jtv, c::ConstraintOR, x, v)
-    jtv[1] = - v[1] - v[2] - 2 * x[1] * v[3] + 2 * (3 - x[1]) * v[4]
+    jtv[1] = -v[1] - v[2] - 2 * x[1] * v[3] + 2 * (3 - x[1]) * v[4]
     jtv[2] = 2 * v[1] + 4 * v[3] + 2 * (1 - x[2]) * v[4]
     return nothing
 end

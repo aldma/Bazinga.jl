@@ -32,8 +32,8 @@ function sampledDistanceMatrix(n, nobs, l)
     D = zeros(T, n, n)
     for i = 1:n
         for j = i+1:n
-            D[i,j] = sum( (X[i,:] - X[j,:]).^2 )
-            D[j,i] = D[i,j]
+            D[i, j] = sum((X[i, :] - X[j, :]) .^ 2)
+            D[j, i] = D[i, j]
         end
     end
     @info "Distance matrix D has rank $(rank(D))"
@@ -84,11 +84,11 @@ struct ConstraintDMC <: SmoothFunction
 end
 function ConstraintDMC(n::Int, iobs::Vector, jobs::Vector, vobs::Vector)
     nobs = length(vobs)
-    nsym = Int(n*(n-1)/2)
+    nsym = Int(n * (n - 1) / 2)
     ny = nobs + nsym
     # indices for  symmetry constraints
-    isym = Vector{Int}(undef,nsym)
-    jsym = Vector{Int}(undef,nsym)
+    isym = Vector{Int}(undef, nsym)
+    jsym = Vector{Int}(undef, nsym)
     #lidx = LinearIndices((n,n))
     #idxsym = Vector{Int}(undef,nsym)
     #idxsymt = Vector{Int}(undef,nsym)
@@ -102,21 +102,21 @@ function ConstraintDMC(n::Int, iobs::Vector, jobs::Vector, vobs::Vector)
             #idxsym[k] = lidx[j,i]
         end
     end
-    return ConstraintDMC(ny, nobs, iobs, jobs, vobs, nsym, isym ,jsym)
+    return ConstraintDMC(ny, nobs, iobs, jobs, vobs, nsym, isym, jsym)
 end
 function Bazinga.eval!(cB::Vector, c::ConstraintDMC, B::Matrix)
     # observations
     for k = 1:c.nobs
         i = c.iobs[k]
         j = c.jobs[k]
-        cB[k] = B[i,i] + B[j,j] - B[i,j] - B[j,i] - c.vobs[k]
+        cB[k] = B[i, i] + B[j, j] - B[i, j] - B[j, i] - c.vobs[k]
     end
     #...cx[1:c.nobs] .= X[c.idxobs] - c.valobs
     # symmetry
     for k = 1:c.nsym
         i = c.isym[k]
         j = c.jsym[k]
-        cB[c.nobs+k] = B[i,j] - B[j,i]
+        cB[c.nobs+k] = B[i, j] - B[j, i]
     end
     #...cB[c.nobs+1:c.nobs+c.nsym] .= B[c.idxsym] - B[c.idxsymt]
     return nothing
@@ -127,17 +127,17 @@ function Bazinga.jtprod!(jtv::Matrix, c::ConstraintDMC, B::Matrix, v::Vector)
     for k = 1:c.nobs
         i = c.iobs[k]
         j = c.jobs[k]
-        jtv[i,i] += v[k]
-        jtv[j,j] += v[k]
-        jtv[i,j] -= v[k]
-        jtv[j,i] -= v[k]
+        jtv[i, i] += v[k]
+        jtv[j, j] += v[k]
+        jtv[i, j] -= v[k]
+        jtv[j, i] -= v[k]
     end
     # symmetry
     for k = 1:c.nsym
         i = c.isym[k]
         j = c.jsym[k]
-        jtv[i,j] += v[c.nobs+k]
-        jtv[j,i] -= v[c.nobs+k]
+        jtv[i, j] += v[c.nobs+k]
+        jtv[j, i] -= v[c.nobs+k]
     end
     #...jtv[c.idxsym] .-= v[c.nobs+1:c.nobs+c.nsym]
     #...jtv[c.idxsymt] .+= v[c.nobs+1:c.nobs+c.nsym]
@@ -196,13 +196,17 @@ for id = 1:ntests
 
     Iobs, Jobs, Vobs = sampledDistanceMatrix(n, nobs, l)
     prob_c = ConstraintDMC(n, Iobs, Jobs, Vobs)
-    nx = n*n
+    nx = n * n
     ny = prob_c.ny
     prob_X0 = randn(T, n, n)
     prob_y0 = zeros(T, ny)
 
     # Schatten, nuclear norm, rank
-    for (prob_g, data) in [(prob_g_schatten, data[:schatten]), (prob_g_nuclear, data[:nuclear]), (prob_g_rank, data[:rank])]
+    for (prob_g, data) in [
+        (prob_g_schatten, data[:schatten]),
+        (prob_g_nuclear, data[:nuclear]),
+        (prob_g_rank, data[:rank]),
+    ]
         out = solver(prob_g, prob_c, prob_X0, prob_y0)
         push_out_to_data(data, id, out)
     end

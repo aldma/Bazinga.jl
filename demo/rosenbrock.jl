@@ -60,11 +60,11 @@ end
 
 struct ConstraintRosenbrock <: SmoothFunction end
 function Bazinga.eval!(cx, c::ConstraintRosenbrock, x)
-    cx .= [- x[1] - x[2]; x[2] - x[1]]
+    cx .= [-x[1] - x[2]; x[2] - x[1]]
     return nothing
 end
 function Bazinga.jtprod!(jtv, c::ConstraintRosenbrock, x, v)
-    jtv .= [- v[1] - v[2]; v[2] - v[1]]
+    jtv .= [-v[1] - v[2]; v[2] - v[1]]
     return nothing
 end
 
@@ -85,8 +85,8 @@ T = Float64
 
 rosenbrock_w = T(10)
 rosenbrock_l = T(1)
-f = SmoothCostRosenbrock( rosenbrock_w )
-g = NonsmoothCostRosenbrock( rosenbrock_l )
+f = SmoothCostRosenbrock(rosenbrock_w)
+g = NonsmoothCostRosenbrock(rosenbrock_l)
 c = ConstraintRosenbrock()
 D = SetRosenbrock()
 nx = 2
@@ -120,7 +120,7 @@ solver(f, g, c, D, x0, y0) = Bazinga.alps(
     subsolver = subsolver,
     subsolver_maxit = subsolver_maxit,
 )
-_ = solver( f, g, c, D, ones(T, nx), zeros(T, ny) )
+_ = solver(f, g, c, D, ones(T, nx), zeros(T, ny))
 
 ################################################################################
 # grid of starting points
@@ -184,14 +184,8 @@ global c00 = 0
 global cun = 0
 
 # plot feasible set
-feasset = Shape([
-    (0.0, 0.0),
-    (xmax, xmin),
-    (xmin, xmin),
-    (xmin, xmax),
-    (xmax, xmax),
-    (0.0, 0.0),
-])
+feasset =
+    Shape([(0.0, 0.0), (xmax, xmin), (xmin, xmin), (xmin, xmax), (xmax, xmax), (0.0, 0.0)])
 hplt = plot(feasset, color = plot_color(:grey, 0.4), linewidth = 0, legend = false)
 xlims!(xmin, xmax)
 ylims!(xmin, xmax)
@@ -204,7 +198,7 @@ end
 Xmatrix = repeat(reshape(xvector, 1, :), length(yvector), 1)
 Ymatrix = repeat(yvector, 1, length(xvector))
 Zmatrix = map(rosenbrockFunction, Xmatrix, Ymatrix)
-lvls = [0; 10 .^ collect(range( -6, log10(maximum(Zmatrix)), length = 49 ))]
+lvls = [0; 10 .^ collect(range(-6, log10(maximum(Zmatrix)), length = 49))]
 contour!(hplt, xvector, yvector, Zmatrix, levels = lvls)
 
 

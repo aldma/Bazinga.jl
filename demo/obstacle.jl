@@ -38,12 +38,12 @@ struct SmoothCostObstacleL1 <: Bazinga.ProximableFunction
     N::Int
 end
 function (f::SmoothCostObstacleL1)(x)
-    return 0.5 * sum( x[f.N+1:2*f.N].^2 ) - sum( x[f.N+1:2*f.N] )
+    return 0.5 * sum(x[f.N+1:2*f.N] .^ 2) - sum(x[f.N+1:2*f.N])
 end
 function Bazinga.gradient!(dfx, f::SmoothCostObstacleL1, x)
     dfx .= 0.0
     dfx[f.N+1:2*f.N] .= x[f.N+1:2*f.N] .- 1.0
-    return 0.5 * sum( x[f.N+1:2*f.N].^2 ) - sum( x[f.N+1:2*f.N] )
+    return 0.5 * sum(x[f.N+1:2*f.N] .^ 2) - sum(x[f.N+1:2*f.N])
 end
 
 struct NonsmoothCostObstacleL2 <: Bazinga.ProximableFunction
@@ -77,7 +77,7 @@ function Bazinga.prox!(y, g::NonsmoothCostObstacleL1, x, gamma)
             #y[2*g.N+i] = 0
         end
     end
-    return sum( y[1:g.N] )
+    return sum(y[1:g.N])
 end
 
 struct NonsmoothCostObstacleRedL1 <: Bazinga.ProximableFunction
@@ -87,7 +87,7 @@ function Bazinga.prox!(y, g::NonsmoothCostObstacleRedL1, x, gamma)
     y[1:g.N] .= max.(0, x[1:g.N] .- gamma)
     y[g.N+1:2*g.N] .= x[g.N+1:2*g.N]
     #y[g.N+1:2*g.N] .= max.(0, x[g.N+1:2*g.N])
-    return sum( y[1:g.N] )
+    return sum(y[1:g.N])
 end
 
 struct ConstraintObstacle <: SmoothFunction
@@ -96,8 +96,8 @@ struct ConstraintObstacle <: SmoothFunction
 end
 function ConstraintObstacle(N)
     T = Float64
-    dv = 2 * ones(T,N)
-    ev = -1 * ones(T,N-1)
+    dv = 2 * ones(T, N)
+    ev = -1 * ones(T, N - 1)
     A = SymTridiagonal(dv, ev)
     return ConstraintObstacle(N, A)
 end
@@ -108,7 +108,7 @@ end
 function Bazinga.jtprod!(jtv, c::ConstraintObstacle, x, v)
     jtv[1:c.N] .= v
     jtv[c.N+1:2*c.N] .= c.A * v # A = A'
-    jtv[2*c.N+1:3*c.N] .= - v
+    jtv[2*c.N+1:3*c.N] .= -v
     return nothing
 end
 
@@ -151,7 +151,7 @@ end
 function Bazinga.proj!(z, D::SetObstacleRed, x)
     # complementarity constraint
     for i = 1:D.N
-        Bazinga.project_onto_CC_set!(@view(z[[i, i+D.N]]), x[[i, i+D.N]])
+        Bazinga.project_onto_CC_set!(@view(z[[i, i + D.N]]), x[[i, i + D.N]])
     end
     #=z .= max.(0, x)
     for i = 1:D.N
@@ -175,7 +175,7 @@ using CSV
 
 problem_name = "obstacle_l1" # obstacle_l1, obstacle_l1red
 Nvec = [16; 32; 48; 64] # discretization intervals
-TOLvec = 10 .^ collect(range(-3,-5,length=9)) # tolerance
+TOLvec = 10 .^ collect(range(-3, -5, length = 9)) # tolerance
 
 filename = problem_name
 filepath = joinpath(@__DIR__, "results", filename)
@@ -210,33 +210,33 @@ solver(f, g, c, D, x0, y0; kwargs...) = Bazinga.alps(
 for N in Nvec
     @info "N = $(N)"
     if problem_name == "obstacle_l2"
-        f = SmoothCostObstacleL2( N )
-        g = NonsmoothCostObstacleL2( N )
-        c = ConstraintObstacle( N )
+        f = SmoothCostObstacleL2(N)
+        g = NonsmoothCostObstacleL2(N)
+        c = ConstraintObstacle(N)
         D = SetObstacle()
-        nx = 3*N
+        nx = 3 * N
         ny = N
     elseif problem_name == "obstacle_l2red"
-        f = SmoothCostObstacleL2( N )
-        g = NonsmoothCostObstacleL2Red( N )
-        c = ConstraintObstacleRed( N )
-        D = SetObstacleRed( N )
-        nx = 2*N
-        ny = 2*N
+        f = SmoothCostObstacleL2(N)
+        g = NonsmoothCostObstacleL2Red(N)
+        c = ConstraintObstacleRed(N)
+        D = SetObstacleRed(N)
+        nx = 2 * N
+        ny = 2 * N
     elseif problem_name == "obstacle_l1"
-        f = SmoothCostObstacleL1( N )
-        g = NonsmoothCostObstacleL1( N )
-        c = ConstraintObstacle( N )
+        f = SmoothCostObstacleL1(N)
+        g = NonsmoothCostObstacleL1(N)
+        c = ConstraintObstacle(N)
         D = SetObstacle()
-        nx = 3*N
+        nx = 3 * N
         ny = N
     elseif problem_name == "obstacle_l1red"
-        f = SmoothCostObstacleL1( N )
-        g = NonsmoothCostObstacleRedL1( N )
-        c = ConstraintObstacleRed( N )
-        D = SetObstacleRed( N )
-        nx = 2*N
-        ny = 2*N
+        f = SmoothCostObstacleL1(N)
+        g = NonsmoothCostObstacleRedL1(N)
+        c = ConstraintObstacleRed(N)
+        D = SetObstacleRed(N)
+        nx = 2 * N
+        ny = 2 * N
     else
         @error "Unknown problem"
     end
@@ -244,7 +244,7 @@ for N in Nvec
     for TOL in TOLvec
         @info "TOL = $(TOL)"
 
-        out = solver(f, g, c, D, 2 .* ones(T, nx), zeros(T, ny), tol=TOL)
+        out = solver(f, g, c, D, 2 .* ones(T, nx), zeros(T, ny), tol = TOL)
 
         xsol = out[1]
         objx = f(xsol)
@@ -254,14 +254,18 @@ for N in Nvec
         proj!(px, D, cx)
         distcx = norm(cx - px, 2)
 
-        push!(data, (N=N,
-                     tol=TOL,
-                     objective = objx,
-                     cviolation = distcx,
-                     iters=out[3],
-                     sub_iters=out[4],
-                     runtime=out[5],
-                     ))
+        push!(
+            data,
+            (
+                N = N,
+                tol = TOL,
+                objective = objx,
+                cviolation = distcx,
+                iters = out[3],
+                sub_iters = out[4],
+                runtime = out[5],
+            ),
+        )
     end
 end
 
