@@ -23,4 +23,3 @@ function Bazinga.prox!(y, f::Zero, x, gamma::Number)
     y .= x
     return 0.0
 end
-

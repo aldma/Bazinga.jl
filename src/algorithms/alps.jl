@@ -62,7 +62,7 @@ function alps(
         # inner tolerance
         epsilon = max(kappaepsilon * epsilon, tol_dual)
         # solve subproblem
-        sub_solver = subsolver(tol = epsilon, verbose=verbose)
+        sub_solver = subsolver(tol = epsilon, verbose = verbose)
         AugLagUpdate!(alFun, mu, y)
         sub_sol, sub_it = sub_solver(f = alFun, g = gFun, x0 = x)
         x .= sub_sol

@@ -9,7 +9,13 @@ basepath = @__DIR__
 folders = [
     basepath,
     joinpath(basepath, "src"),
+    joinpath(basepath, "src", "algorithms"),
+    joinpath(basepath, "src", "projections"),
+    joinpath(basepath, "src", "proxoperators"),
+    joinpath(basepath, "src", "utilities"),
     joinpath(basepath, "test"),
+    joinpath(basepath, "test", "definitions"),
+    joinpath(basepath, "test", "problems"),
     joinpath(basepath, "demo"),
 ]
 

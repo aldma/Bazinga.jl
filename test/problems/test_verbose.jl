@@ -34,7 +34,7 @@
 
         x0 = zeros(T, n)
         y0 = zeros(T, n)
-        out = Bazinga.alps(f, g, c, D, x0, y0, verbose=true)
+        out = Bazinga.alps(f, g, c, D, x0, y0, verbose = true)
         x = out[1]
         it = out[3]
         subit = out[4]

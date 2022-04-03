@@ -14,7 +14,7 @@ using Test
     f = Quadratic(Q, q)
     g = IndBox(low, upp)
     c = IdentityFunction()
-    D = ClosedSet( IndBox(low, upp) )
+    D = ClosedSet(IndBox(low, upp))
 
     n = 2
 
@@ -70,7 +70,7 @@ end
         f = Quadratic(Q, q)
         g = IndBox(low, upp)
         c = IdentityFunction()
-        D = ClosedSet( IndBox(low, upp) )
+        D = ClosedSet(IndBox(low, upp))
 
         Lip = maximum(abs.(eigenvalues))
         gamma = T(0.95) / Lip

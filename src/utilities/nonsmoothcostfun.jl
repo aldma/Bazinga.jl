@@ -9,12 +9,12 @@ end
     NonsmoothCostFun(g)
 """
 function NonsmoothCostFun(g)
-    NonsmoothCostFun( g, 0.0, 0.0 )
+    NonsmoothCostFun(g, 0.0, 0.0)
 end
 """
     gz = prox!( z, g, x, gamma )
 """
-function prox!( z, g::NonsmoothCostFun, x, gamma)
+function prox!(z, g::NonsmoothCostFun, x, gamma)
     gz = prox!(z, g.g, x, gamma)
     g.gamma = gamma
     g.gz = gz
