@@ -28,6 +28,11 @@ include("projections/complementarityConstraints.jl")
 include("proxoperators/zero.jl")
 include("proxoperators/rank.jl")
 include("proxoperators/schattenNormLp.jl")
+include("proxoperators/normL1Nonneg.jl")
+include("proxoperators/normL1Box.jl")
+include("proxoperators/normLpNonneg.jl")
+include("proxoperators/normLpBox.jl")
+include("proxoperators/normL0Box.jl")
 
 # utilities
 include("utilities/auglagfun.jl")
