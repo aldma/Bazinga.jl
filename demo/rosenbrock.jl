@@ -75,11 +75,11 @@ function Bazinga.proj!(z, D::SetRosenbrock, cx)
 end
 
 ################################################################################
-# grid of discretizations and tolerances
+# problems and solvers
 ################################################################################
-
 problem_name = "rosenbrock"
-subsolver_name = "lbfgs"
+solver_name = "als" # alps, alps
+subsolver_name = "lbfgs" # noaccel, lbfgs
 
 T = Float64
 
@@ -100,7 +100,7 @@ else
     @error "Unknown acceleration"
 end
 
-subsolver_maxit = 10_000
+subsolver_maxit = 1_000_000
 subsolver_minimum_gamma = eps(T)
 subsolver(; kwargs...) = ProximalAlgorithms.PANOCplus(
     directions = subsolver_directions,
@@ -109,7 +109,7 @@ subsolver(; kwargs...) = ProximalAlgorithms.PANOCplus(
     minimum_gamma = subsolver_minimum_gamma;
     kwargs...,
 )
-solver(f, g, c, D, x0, y0) = Bazinga.alps(
+solver(f, g, c, D, x0, y0) = Bazinga.als(
     f,
     g,
     c,
@@ -120,7 +120,6 @@ solver(f, g, c, D, x0, y0) = Bazinga.alps(
     subsolver = subsolver,
     subsolver_maxit = subsolver_maxit,
 )
-_ = solver(f, g, c, D, ones(T, nx), zeros(T, ny))
 
 ################################################################################
 # grid of starting points
@@ -131,19 +130,20 @@ using Printf
 using CSV
 using Statistics
 
-filename = problem_name * "_" * subsolver_name * "_" * string(subsolver_maxit)
-filepath = joinpath(@__DIR__, "results", filename)
+filename = solver_name * "_" * subsolver_name * "_" * string(subsolver_maxit)
+filepath = joinpath(@__DIR__, "results", problem_name, filename)
 
 xmin = -5.0
 xmax = 5.0
 
 data = DataFrame()
 
-xgrid = [(i, j) for i = xmin:0.5:xmax, j = xmin:0.5:xmax];
+xgrid = [(i, j) for i = xmin:1.0:xmax, j = xmin:1.0:xmax];
 xgrid = xgrid[:];
 ntests = length(xgrid)
 
 for i = 1:ntests
+    @info "Problem $(i) of $(ntests)"
     x0 = [xgrid[i][1]; xgrid[i][2]]
     y0 = zeros(T, ny)
 
