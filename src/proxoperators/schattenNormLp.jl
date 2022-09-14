@@ -11,7 +11,7 @@ With a nonnegative scalar `alpha`, return the Schatten-p-norm
 f(X) = alpha \\|X\\|_p^p.
 ```
 """
-struct SchattenNormLpPower{T}
+struct SchattenNormLpPower{T} <: Bazinga.ProximableFunction
     p::T
     alpha::T
     function SchattenNormLpPower{T}(p::T, alpha::T) where {T}
@@ -41,16 +41,22 @@ function prox!(Y::Matrix, f::SchattenNormLpPower{<:Real}, X::Matrix, gamma::Numb
     return f.alpha * sum(sigmas .^ f.p)
 end
 
-function prox_naive(f::SchattenNormLpPower, X::Matrix, gamma)
-    svdec = svd(X)
-    sigmas = svdec.S
-    solve_lp_quasi_norm_subproblem!(sigmas, f.p, f.alpha, gamma)
-    Y = svdec.U * spdiagm(sigmas) * svdec.Vt
-    return Y, f.alpha * sum(sigmas .^ f.p)
+# vectorized input
+function (f::SchattenNormLpPower)(x::AbstractVector)
+    X = check_and_reshape_as_matrix(x)
+    return f(X)
+end
+
+function Bazinga.prox!(y::AbstractVector, f::SchattenNormLpPower, x::AbstractVector, gamma)
+    X = check_and_reshape_as_matrix(x)
+    Y = check_and_reshape_as_matrix(y)
+    fy = prox!(Y, f, X, gamma)
+    y .= Y[:]
+    return fy
 end
 
 
-
+#============================================================================#
 function solve_lp_quasi_norm_subproblem(x::Real, p::Real, a::Real, gamma::Real)
     # min    a ||z||_p^p + 1/(2 gamma) (z-x)^2
     # wrt    z
@@ -60,7 +66,7 @@ function solve_lp_quasi_norm_subproblem(x::Real, p::Real, a::Real, gamma::Real)
     T = eltype(x)
     iter = 0
     maxiter = 1_000
-    epsilon = 1e-6
+    epsilon = 1e-14
 
     alpha = a * gamma
     if x <= 0

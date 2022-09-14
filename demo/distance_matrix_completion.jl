@@ -22,24 +22,26 @@
 using LinearAlgebra
 using Bazinga
 using ProximalAlgorithms
-using ProximalOperators
-
+using DataFrames
+using CSV
+using Statistics
 using Random
-Random.seed!(123)
 
-function sampledDistanceMatrix(n, nobs, l)
+rng = Xoshiro(123)
+
+function sampledDistanceMatrix(N, nobs, l)
     T = Float64
-    X = randn(T, n, l)
-    D = zeros(T, n, n)
-    for i = 1:n
-        for j = i+1:n
+    X = randn(rng, T, N, l)
+    D = zeros(T, N, N)
+    for i = 1:N
+        for j = i+1:N
             D[i, j] = sum((X[i, :] - X[j, :]) .^ 2)
             D[j, i] = D[i, j]
         end
     end
     @info "Distance matrix D has rank $(rank(D))"
 
-    idx = randperm(n * n)[1:nobs]
+    idx = randperm(rng, N * N)[1:nobs]
     sort!(idx)
     IJ = CartesianIndices(D)[idx]
     Iobs = zeros(Int, nobs)
@@ -53,6 +55,7 @@ function sampledDistanceMatrix(n, nobs, l)
 end
 
 function push_out_to_data(data, id, out)
+    X = Bazinga.check_and_reshape_as_matrix(out[1])
     push!(
         data,
         (
@@ -61,7 +64,7 @@ function push_out_to_data(data, id, out)
             subiters = out[4],
             runtime = out[5],
             cviolation = out[7],
-            rank = rank(out[1]),
+            rank = rank(X),
         ),
     )
     return nothing
@@ -80,16 +83,16 @@ struct ConstraintDMC <: SmoothFunction
     isym::Vector
     jsym::Vector
 end
-function ConstraintDMC(n::Int, iobs::Vector, jobs::Vector, vobs::Vector)
+function ConstraintDMC(N::Int, iobs::Vector, jobs::Vector, vobs::Vector)
     nobs = length(vobs)
-    nsym = Int(n * (n - 1) / 2)
+    nsym = Int(N * (N - 1) / 2)
     ny = nobs + nsym
     # indices for  symmetry constraints
     isym = Vector{Int}(undef, nsym)
     jsym = Vector{Int}(undef, nsym)
     k = 0
-    for i = 1:n
-        for j = i+1:n
+    for i = 1:N
+        for j = i+1:N
             k += 1
             isym[k] = i
             jsym[k] = j
@@ -132,47 +135,66 @@ function Bazinga.jtprod!(jtv::Matrix, c::ConstraintDMC, B::Matrix, v::Vector)
     end
     return nothing
 end
+function Bazinga.eval!(cB::Vector, c::ConstraintDMC, x::Vector)
+    X = Bazinga.check_and_reshape_as_matrix(x)
+    Bazinga.eval!(cB, c, X)
+    return nothing
+end
+function Bazinga.jtprod!(jtv::Matrix, c::ConstraintDMC, x::Vector, v::Vector)
+    X = Bazinga.check_and_reshape_as_matrix(x)
+    Bazinga.jtprod!(jtv, c, X, v)
+    return nothing
+end
+function Bazinga.jtprod!(jtv::Vector, c::ConstraintDMC, x::Vector, v::Vector)
+    X = Bazinga.check_and_reshape_as_matrix(x)
+    Y = Bazinga.check_and_reshape_as_matrix(jtv)
+    Bazinga.jtprod!(Y, c, X, v)
+    jtv .= Y[:]
+    return nothing
+end
 
 ################################################################################
 # solve problems
 ################################################################################
-using DataFrames
-using CSV
-using Statistics
 
-problem_name = "dmc"
+problem_name = "dist_matrix_completion"
+basepath = joinpath(@__DIR__, "results", problem_name)
 
 T = Float64
-n = 20 # 10, 15, 20
-nsym = Int(n * (n - 1) / 2)
-nobs = Int(floor((n * n - nsym) / 3))
+N = 20 # 10, 20
+nsym = Int(N * (N - 1) / 2)
+nobs = Int(floor((N * N - nsym) / 3))
 l = 5
 pSchatten = 0.5
 
-ntests = 20
+ntests = 30
 
 prob_f = Bazinga.Zero()
-prob_g_nuclear = ProximalOperators.NuclearNorm()
+prob_g_nuclear = Bazinga.NuclearNorm()
 prob_g_schatten = Bazinga.SchattenNormLpPower(pSchatten)
 prob_g_rank = Bazinga.Rank()
 prob_D = Bazinga.ZeroSet()
 
+subsolver_directions = ProximalAlgorithms.LBFGS(5)
+subsolver_minimum_gamma = 1e-32
+subsolver_maxit = 1_000_000
 subsolver(; kwargs...) = ProximalAlgorithms.PANOCplus(
-    directions = ProximalAlgorithms.LBFGS(5),
-    maxit = 1_000_000,
-    freq = 1_000_000,
-    minimum_gamma = eps(T);
+    directions = subsolver_directions,
+    maxit = subsolver_maxit,
+    freq = subsolver_maxit,
+    minimum_gamma = subsolver_minimum_gamma;
     kwargs...,
 )
-solver(g, c, X0, y0; kwargs...) = Bazinga.alps(
+solver(g, c, x0, y0; kwargs...) = Bazinga.als(
     prob_f,
     g,
     c,
     prob_D,
-    X0,
+    x0,
     y0,
     verbose = true,
     subsolver = subsolver;
+    subsolver_maxit = subsolver_maxit,
     kwargs...,
 )
 
@@ -184,21 +206,21 @@ end
 
 for id = 1:ntests
     @info "===== Problem $(id) of $(ntests) ====="
-    Iobs, Jobs, Vobs = sampledDistanceMatrix(n, nobs, l)
-    prob_c = ConstraintDMC(n, Iobs, Jobs, Vobs)
-    nx = n * n
+    Iobs, Jobs, Vobs = sampledDistanceMatrix(N, nobs, l)
+    prob_c = ConstraintDMC(N, Iobs, Jobs, Vobs)
+    nx = N * N
     ny = prob_c.ny
-    prob_X0 = randn(T, n, n)
+    prob_x0 = randn(rng, T, N * N)
     prob_y0 = zeros(T, ny)
 
     # rank
     @info "RANK:"
-    out = solver(prob_g_rank, prob_c, prob_X0, prob_y0)
+    out = solver(prob_g_rank, prob_c, prob_x0, prob_y0)
     push_out_to_data(data[:rank], id, out)
 
     # Schatten
     @info "SCHATTEN NORM:"
-    out = solver(prob_g_schatten, prob_c, prob_X0, prob_y0)
+    out = solver(prob_g_schatten, prob_c, prob_x0, prob_y0)
     push_out_to_data(data[:schatten], id, out)
     # Schatten + rank
     @info "SCHATTEN NORM + RANK:"
@@ -207,7 +229,7 @@ for id = 1:ntests
 
     # nuclear
     @info "NUCLEAR NORM:"
-    out = solver(prob_g_nuclear, prob_c, prob_X0, prob_y0)
+    out = solver(prob_g_nuclear, prob_c, prob_x0, prob_y0)
     push_out_to_data(data[:nuclear], id, out)
     # nuclear + rank
     @info "NUCLEAR NORM + RANK:"
@@ -216,8 +238,8 @@ for id = 1:ntests
 
 end
 
-filename = problem_name * string(n)
-filepath = joinpath(@__DIR__, "results", filename)
+filename = "N" * string(N)
+filepath = joinpath(basepath, filename)
 
 for k in keys
     CSV.write(filepath * "_" * String(k) * ".csv", data[k], header = true)
