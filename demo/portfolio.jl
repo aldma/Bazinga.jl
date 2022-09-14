@@ -23,6 +23,9 @@ using LinearAlgebra
 using Bazinga
 using ProximalAlgorithms
 using ProximalOperators
+using DataFrames
+using CSV
+using Statistics
 
 ###################################################################################
 # problem definition
@@ -64,9 +67,6 @@ end
 ################################################################################
 # load problem data
 ################################################################################
-using DataFrames
-using CSV
-
 function read_FG_problem_data(foldername)
     T = Float64
     out = CSV.read(joinpath(foldername, "Q.csv"), DataFrame, header = false)
@@ -108,22 +108,27 @@ end
 ################################################################################
 # solve problems
 ################################################################################
+
 problem_name = "portfolio"
 attribu_name = "dim200"
+basepath = joinpath(@__DIR__, "results", problem_name)
 
 basefoldername = joinpath(@__DIR__, "portfolio_data", attribu_name)
 problems = readdir(basefoldername)
 nproblems = length(problems)
 
 T = Float64
-data_a = T(100)
+data_a = T(100) # 1, 10, 100
 pnorm = 0.5
 
+subsolver_directions = ProximalAlgorithms.LBFGS(5)
+subsolver_maxit = 1_000
+subsolver_minimum_gamma = 1e-32
 subsolver(; kwargs...) = ProximalAlgorithms.PANOCplus(
-    directions = ProximalAlgorithms.LBFGS(5),
-    maxit = 10_000,
-    freq = 10_000,
-    minimum_gamma = eps(T);
+    directions = subsolver_directions,
+    maxit = subsolver_maxit,
+    freq = subsolver_maxit,
+    minimum_gamma = subsolver_minimum_gamma;
     kwargs...,
 )
 
@@ -148,7 +153,7 @@ for id in eachindex(problems)
     prob_g_l0 = Bazinga.NormL0Box(data_a, u = data_ub)
 
     # build solver
-    solver(g, X0, y0; kwargs...) = Bazinga.alps(
+    solver(g, X0, y0; kwargs...) = Bazinga.als(
         prob_f,
         g,
         prob_c,
@@ -205,15 +210,12 @@ for id in eachindex(problems)
 
 end
 
-
-filename = problem_name * "_" * attribu_name * "_a" * string(Int(data_a))
-filepath = joinpath(@__DIR__, "results", filename)
+filename = attribu_name * "_a" * string(Int(data_a))
+filepath = joinpath(basepath, filename)
 
 for k in keys
     CSV.write(filepath * "_" * String(k) * ".csv", data[k], header = true)
 end
-
-using Statistics
 
 for k in keys
     @info uppercase(String(k))
