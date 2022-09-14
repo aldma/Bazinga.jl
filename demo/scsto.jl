@@ -178,7 +178,7 @@ swc_vector = [1e-6; 1e-5; 1e-4; 0.001; 0.01; 0.1; 1.0; 10.0] # default 10.^[-6:1
 ntests = length(swc_vector)
 
 # allocation
-nt = 2000; # default 2000
+nt = ngrid; # default 2000
 tfsol = Array{T}(undef, ntests);
 swdelta = Array{T}(undef, N, ntests);
 swtau = Array{T}(undef, N - 1, ntests);
@@ -191,9 +191,9 @@ prob = scstoproblem(state0, dynam, d_dynam, uvec, ngrid = ngrid, t0 = t0, tf = t
 f = ScSTOSmoothCost(prob)
 c = ConstraintFreeTime()
 if problem_name == "scsto_free"
-    D = SetFreeTimeOutBox(0.0, 0.0, 0.0, tf)
+    D = SetFreeTimeOutBox(0.0, 0.0, 0.0, 15.0)
 elseif problem_name == "scsto_box"
-    D = SetFreeTimeOutBox(5.0, 7.0, 10.0, tf)
+    D = SetFreeTimeOutBox(5.0, 10.0, 13.0, 15.0)
 else
     @error "Unknown problem"
 end

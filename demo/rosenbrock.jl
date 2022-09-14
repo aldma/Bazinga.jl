@@ -27,6 +27,11 @@
 using LinearAlgebra
 using Bazinga
 using ProximalAlgorithms
+using Plots
+using DataFrames
+using Printf
+using CSV
+using Statistics
 
 ###################################################################################
 # problem definition
@@ -100,8 +105,8 @@ else
     @error "Unknown acceleration"
 end
 
-subsolver_maxit = 1_000_000
-subsolver_minimum_gamma = eps(T)
+subsolver_maxit = 1_000_000_000
+subsolver_minimum_gamma = 1e-32
 subsolver(; kwargs...) = ProximalAlgorithms.PANOCplus(
     directions = subsolver_directions,
     maxit = subsolver_maxit,
@@ -124,12 +129,6 @@ solver(f, g, c, D, x0, y0) = Bazinga.als(
 ################################################################################
 # grid of starting points
 ################################################################################
-using Plots
-using DataFrames
-using Printf
-using CSV
-using Statistics
-
 filename = solver_name * "_" * subsolver_name * "_" * string(subsolver_maxit)
 filepath = joinpath(@__DIR__, "results", problem_name, filename)
 
