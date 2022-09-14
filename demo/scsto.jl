@@ -145,7 +145,7 @@ end
 
 # solver build
 subsolver_directions = ProximalAlgorithms.LBFGS(5)
-subsolver_maxit = 1_000
+subsolver_maxit = 1_000_000
 subsolver_minimum_gamma = 1e-32
 subsolver(; kwargs...) = ProximalAlgorithms.PANOCplus(
     directions = subsolver_directions,
@@ -154,7 +154,7 @@ subsolver(; kwargs...) = ProximalAlgorithms.PANOCplus(
     minimum_gamma = subsolver_minimum_gamma;
     kwargs...,
 )
-solver(f, g, c, D, x0, y0; kwargs...) = Bazinga.alps(
+solver(f, g, c, D, x0, y0; kwargs...) = Bazinga.als(
     f,
     g,
     c,
@@ -168,6 +168,7 @@ solver(f, g, c, D, x0, y0; kwargs...) = Bazinga.alps(
 )
 
 problem_name = "scsto_box" # scsto_free, scsto_box
+basepath = joinpath(@__DIR__, "results", "scsto")
 
 # number of points on the fixed grid
 ngrid = 200 # default 200
@@ -177,7 +178,7 @@ swc_vector = [1e-6; 1e-5; 1e-4; 0.001; 0.01; 0.1; 1.0; 10.0] # default 10.^[-6:1
 ntests = length(swc_vector)
 
 # allocation
-nt = 2000;
+nt = 2000; # default 2000
 tfsol = Array{T}(undef, ntests);
 swdelta = Array{T}(undef, N, ntests);
 swtau = Array{T}(undef, N - 1, ntests);
@@ -234,21 +235,21 @@ for k = 1:ntests
     u = usim[1, :, k]
     df = DataFrame(t = t, x1 = x1, x2 = x2, u = u)
     filename = problem_name * "_" * string(swc_vector[k])
-    filepath = joinpath(@__DIR__, "results", filename)
+    filepath = joinpath(basepath, filename)
     store_csv_file(filepath, df)
 end
 
 # csv file with solutions (switching intervals)
 df = DataFrame(swdelta, :auto)
 filename = problem_name * "_" * "swdelta"
-filepath = joinpath(@__DIR__, "results", filename)
+filepath = joinpath(basepath, filename)
 store_csv_file(filepath, df)
 
 # csv file with `cleaned` solutions (switching intervals)
 swdelta_clean = cleandelta(swdelta)
 df = DataFrame(swdelta_clean, :auto)
 filename = problem_name * "_" * "swdelta_clean"
-filepath = joinpath(@__DIR__, "results", filename)
+filepath = joinpath(basepath, filename)
 store_csv_file(filepath, df)
 
 df = DataFrame()
@@ -289,7 +290,7 @@ for k = 1:ntests
     )
 end
 filename = problem_name * "_" * "summary"
-filepath = joinpath(@__DIR__, "results", filename)
+filepath = joinpath(basepath, filename)
 store_csv_file(filepath, df)
 
 ################################################################################
@@ -314,5 +315,5 @@ end
 plot(hplt1, hplt2, hplt3, hplt4, show = true)
 
 filename = problem_name
-filepath = joinpath(@__DIR__, "results", filename)
+filepath = joinpath(basepath, filename)
 savefig(filepath * ".pdf")
