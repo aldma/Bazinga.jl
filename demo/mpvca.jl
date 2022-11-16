@@ -145,7 +145,9 @@ function Bazinga.proj!(z, D::SetMPVCA, cx)
 end
 
 # iter
-problem_name = "mpvca" # mpvca, mpvca_fullslack, mpvca_slack
+problem_name = "mpvca" # mpvca, *_slack, *_fullslack
+solver_name = "als" # alps, als
+subsolver_name = "lbfgs" # lbfgs
 
 T = Float64
 f = SmoothCostMPVCA(T.([4; 2]))
@@ -170,10 +172,19 @@ elseif problem_name == "mpvca_fullslack"
 else
     error("Unknown problem name")
 end
-@info "Problem " * problem_name
 
 # solver setup
-subsolver_directions = ProximalAlgorithms.LBFGS(5)
+subsolver_directions = if subsolver_name == "noaccel"
+    ProximalAlgorithms.NoAcceleration()
+elseif subsolver_name == "broyden"
+    ProximalAlgorithms.Broyden()
+elseif subsolver_name == "anderson"
+    ProximalAlgorithms.AndersonAcceleration(5)
+elseif subsolver_name == "lbfgs"
+    ProximalAlgorithms.LBFGS(5)
+else
+    @error "Unknown subsolver name"
+end
 subsolver_maxit = 1_000
 subsolver_minimum_gamma = eps(T)
 subsolver(; kwargs...) = ProximalAlgorithms.PANOCplus(
@@ -183,19 +194,39 @@ subsolver(; kwargs...) = ProximalAlgorithms.PANOCplus(
     minimum_gamma = subsolver_minimum_gamma;
     kwargs...,
 )
-solver(f, g, c, D, x0, y0) = Bazinga.alps(
-    f,
-    g,
-    c,
-    D,
-    x0,
-    y0,
-    verbose = false,
-    tol = 1e-8,
-    subsolver = subsolver,
-    subsolver_maxit = subsolver_maxit,
-)
-_ = solver(f, g, c, D, ones(T, nx), zeros(T, ny)) # warm up
+if solver_name == "alps"
+    solver(f, g, c, D, x0, y0) = Bazinga.alps(
+        f,
+        g,
+        c,
+        D,
+        x0,
+        y0,
+        verbose = false,
+        tol = 1e-8,
+        subsolver = subsolver,
+        subsolver_maxit = subsolver_maxit,
+    )
+elseif solver_name == "als"
+    solver(f, g, c, D, x0, y0) = Bazinga.als(
+        f,
+        g,
+        c,
+        D,
+        x0,
+        y0,
+        verbose = false,
+        tol = 1e-8,
+        subsolver = subsolver,
+        subsolver_maxit = subsolver_maxit,
+    )
+else
+    @error "Unknown solver name"
+end
+
+@info "Problem " * problem_name
+@info "Solver  " * solver_name * "(" * subsolver_name * ")"
+_ = solver(f, g, c, D, zeros(T, nx), zeros(T, ny)) # warm up
 
 ################################################################################
 # grid of starting points
@@ -206,7 +237,7 @@ using Printf
 using CSV
 using Statistics
 
-filename = problem_name
+filename = problem_name * "_" * solver_name * "_" * subsolver_name
 filepath = joinpath(@__DIR__, "results", filename)
 
 xmin = -5.0

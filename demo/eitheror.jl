@@ -131,8 +131,9 @@ function Bazinga.proj!(z, D::SetXOR, x)
     return nothing
 end
 
-problem_name = "eitheror" # eitheror, eitheror_fullslack, xor, xor_fullslack
-subsolver_name = "lbfgs"
+problem_name = "eitheror" # eitheror, xor, *_fullslack
+solver_name = "alps" # alps, als
+subsolver_name = "lbfgs" # lbfgs, noaccel, broyden, anderson
 
 T = Float64
 f = SmoothCostOR(T.([8; -3]))
@@ -173,7 +174,7 @@ elseif subsolver_name == "anderson"
 elseif subsolver_name == "lbfgs"
     ProximalAlgorithms.LBFGS(5)
 else
-    @error "Unknown acceleration"
+    @error "Unknown subsolver name"
 end
 subsolver_maxit = 1_000
 subsolver_minimum_gamma = eps(T)
@@ -184,18 +185,38 @@ subsolver(; kwargs...) = ProximalAlgorithms.PANOCplus(
     minimum_gamma = subsolver_minimum_gamma;
     kwargs...,
 )
-solver(f, g, c, D, x0, y0) = Bazinga.alps(
-    f,
-    g,
-    c,
-    D,
-    x0,
-    y0,
-    verbose = false,
-    tol = 1e-8,
-    subsolver = subsolver,
-    subsolver_maxit = subsolver_maxit,
-)
+if solver_name == "alps"
+    solver(f, g, c, D, x0, y0) = Bazinga.alps(
+        f,
+        g,
+        c,
+        D,
+        x0,
+        y0,
+        verbose = false,
+        tol = 1e-8,
+        subsolver = subsolver,
+        subsolver_maxit = subsolver_maxit,
+    )
+elseif solver_name == "als"
+    solver(f, g, c, D, x0, y0) = Bazinga.als(
+        f,
+        g,
+        c,
+        D,
+        x0,
+        y0,
+        verbose = false,
+        tol = 1e-8,
+        subsolver = subsolver,
+        subsolver_maxit = subsolver_maxit,
+    )
+else
+    @error "Unknown solver name"
+end
+
+@info "Problem " * problem_name
+@info "Solver  " * solver_name * "(" * subsolver_name * ")"
 _ = solver(f, g, c, D, zeros(T, nx), zeros(T, ny)) # warm up
 
 ################################################################################
@@ -207,7 +228,7 @@ using Printf
 using CSV
 using Statistics
 
-filename = problem_name * "_" * subsolver_name
+filename = problem_name * "_" * solver_name * "_" * subsolver_name
 filepath = joinpath(@__DIR__, "results", filename)
 
 xmin = -4.0
