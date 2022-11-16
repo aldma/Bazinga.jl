@@ -12,22 +12,50 @@
 	              x1 > 0   =>   x1 + x2 - 5*sqrt(2) >= 0
 	              x2 > 0   =>   x1 + x2 - 5         >= 0
 
-	Reformulation as a constrained structured problem in the form
+	Reformulations as constrained structured problems in the form
 
 	minimize     f(x) + g(x)
 	subject to   c(x) in D
 
-	where
+	(i) implicit formulation
+        name = 'mpvca'
+        x    = [x1, x2]
 	    f(x) = 4*x1 + 2*x2
-	    g(x) = IndBox[0,+infty](x)
+	    g(x) = Indicator_Box[0,+infty](x)
 	    c(x) = [ x1                  ]
 	           [ x1 + x2 - 5*sqrt(2) ]
        	       [ x2                  ]
 	           [ x1 + x2 - 5         ]
 	    D    = { c | (c1,c2) in Dvc, (c3,c4) in Dvc }
+        nx = 2
+        ny = 4
 	with
 	    Dvc  = { (a,b) | a >= 0, a*b >= 0 }
              = { (a,b) | a = 0 } ∪ { (a,b) | a >= 0, b >= 0 }
+
+    (ii) slack variables for all constraints
+        name = 'mpvca_fullslack'
+        x    = [x1, x2, s1, s2, s3, s4]
+        f(x) = 4*x1 + 2*x2
+        g(x) = Indicator_Box[0,+infty]((x1,x2)) + Indicator_Dvc(s1, s2) + Indicator_Dvc(s3, s4)
+        c(x) = [ x1                  - s1 ]
+               [ x1 + x2 - 5*sqrt(2) - s2 ]
+               [ x2                  - s3 ]
+               [ x1 + x2 - 5         - s4 ]
+        D    = (0, 0, 0, 0)
+        nx = 6
+        ny = 4
+
+    (iii) slack variables for nontrivial constraints
+        name = 'mpvca_slack'
+        x    = [x1, x2, s1, s2]
+        f(x) = 4*x1 + 2*x2
+        g(x) = Indicator_Dvc(x1, s1) + Indicator_Dvc(x2, s2)
+        c(x) = [ x1 + x2 - 5*sqrt(2) - s1 ]
+               [ x1 + x2 - 5         - s2 ]
+        D    = (0, 0)
+        nx = 4
+        ny = 2
 
     References:
     [Hoh09]     Hoheisel, "Mathematical Programs with Vanishing Constraints",
@@ -66,6 +94,14 @@ function Bazinga.prox!(z, g::NonsmoothCostMPVCAslack, x, gamma)
     return zero(eltype(x))
 end
 
+struct NonsmoothCostMPVCAfullslack <: Bazinga.ProximableFunction end
+function Bazinga.prox!(z, g::NonsmoothCostMPVCAfullslack, x, gamma)
+    z[1:2] .= max.(0, x[1:2])
+    Bazinga.project_onto_VC_set!(@view(z[3:4]), x[3:4])
+    Bazinga.project_onto_VC_set!(@view(z[5:6]), x[5:6])
+    return zero(eltype(x))
+end
+
 struct ConstraintMPVCA <: SmoothFunction end
 function Bazinga.eval!(cx, c::ConstraintMPVCA, x)
     cx .= [x[1]; x[1] + x[2] - 5.0 * sqrt(2.0); x[2]; x[1] + x[2] - 5.0]
@@ -86,6 +122,16 @@ function Bazinga.jtprod!(jtv, c::ConstraintMPVCAslack, x, v)
     return nothing
 end
 
+struct ConstraintMPVCAfullslack <: SmoothFunction end
+function Bazinga.eval!(cx, c::ConstraintMPVCAfullslack, x)
+    cx .= [x[1] - x[3]; x[1] + x[2] - 5.0 * sqrt(2.0) - x[4]; x[2] - x[5]; x[1] + x[2] - 5.0 - x[6]]
+    return nothing
+end
+function Bazinga.jtprod!(jtv, c::ConstraintMPVCAfullslack, x, v)
+    jtv .= [v[1] + v[2] + v[4]; v[2] + v[3] + v[4]; -v[1]; -v[2]; -v[3]; -v[4]]
+    return nothing
+end
+
 struct SetMPVCA <: ClosedSet end
 function Bazinga.proj!(z, D::SetMPVCA, cx)
     Bazinga.project_onto_VC_set!(@view(z[1:2]), cx[1:2])
@@ -94,23 +140,32 @@ function Bazinga.proj!(z, D::SetMPVCA, cx)
 end
 
 # iter
-problem_name = "mpvca" # mpvca, mpvca_slack
+problem_name = "mpvca" # mpvca, mpvca_fullslack, mpvca_slack
 
 T = Float64
 f = SmoothCostMPVCA(T.([4; 2]))
-if problem_name == "mpvca_slack"
-    g = NonsmoothCostMPVCAslack()
-    c = ConstraintMPVCAslack()
-    D = Bazinga.ZeroSet()
-    nx = 4
-    ny = 2
-else
+if problem_name == "mpvca"
     g = NonsmoothCostMPVCA()
     c = ConstraintMPVCA()
     D = SetMPVCA()
     nx = 2
     ny = 4
+elseif problem_name == "mpvca_slack"
+    g = NonsmoothCostMPVCAslack()
+    c = ConstraintMPVCAslack()
+    D = Bazinga.ZeroSet()
+    nx = 4
+    ny = 2
+elseif problem_name == "mpvca_fullslack"
+    g = NonsmoothCostMPVCAfullslack()
+    c = ConstraintMPVCAfullslack()
+    D = Bazinga.ZeroSet()
+    nx = 6
+    ny = 4
+else
+    error("Unknown problem name")
 end
+@info "Problem " * problem_name
 
 # solver setup
 subsolver_directions = ProximalAlgorithms.LBFGS(5)
@@ -130,7 +185,8 @@ solver(f, g, c, D, x0, y0) = Bazinga.alps(
     D,
     x0,
     y0,
-    verbose = true,
+    verbose = false,
+    tol = 1e-8,
     subsolver = subsolver,
     subsolver_maxit = subsolver_maxit,
 )
@@ -153,20 +209,29 @@ xmax = 20.0
 
 data = DataFrame()
 
-xgrid = [(i, j) for i = xmin:1.0:xmax, j = xmin:1.0:xmax];
+xgrid = [(i, j) for i = xmin:0.5:xmax, j = xmin:0.5:xmax];
 xgrid = xgrid[:];
 ntests = length(xgrid)
 
 for i = 1:ntests
-    if problem_name == "mpvca_slack"
+    if problem_name == "mpvca"
+        x0 = [xgrid[i][1]; xgrid[i][2]]
+    elseif problem_name == "mpvca_slack"
         x0 = [
             xgrid[i][1]
             xgrid[i][2]
             xgrid[i][1] + xgrid[i][2] - 5 * sqrt(2)
             xgrid[i][1] + xgrid[i][2] - 5
         ]
-    else
-        x0 = [xgrid[i][1]; xgrid[i][2]]
+    elseif problem_name == "mpvca_fullslack"
+        x0 = [
+            xgrid[i][1]
+            xgrid[i][2]
+            xgrid[i][1]
+            xgrid[i][1] + xgrid[i][2] - 5 * sqrt(2)
+            xgrid[i][2]
+            xgrid[i][1] + xgrid[i][2] - 5
+        ]        
     end
     y0 = zeros(T, ny)
 
@@ -191,6 +256,7 @@ end
 
 CSV.write(filepath * ".csv", data, header = true)
 
+@info " sample points: $(ntests)"
 @info "    iterations: max $(maximum(data.iters)), median  $(median(data.iters))"
 @info "sub iterations: max $(maximum(data.sub_iters)), median  $(median(data.sub_iters))"
 @info "       runtime: max $(maximum(data.runtime)), median  $(median(data.runtime))"
@@ -238,7 +304,7 @@ scatter!(
 xlims!(xmin, xmax)
 ylims!(xmin, xmax)
 
-tolx = 1e-3 # approx tolerance
+tolx = 1e-6 # approx tolerance
 
 for i = 1:ntests
     xi = [data[i, 2]; data[i, 3]]
@@ -270,6 +336,12 @@ for i = 1:ntests
         global c_un += 1
         @printf "(%6.4f,%6.4f) from (%6.4f,%6.4f)\n" xf[1] xf[2] xi[1] xi[2]
     end
+end
+
+@info "  global (0,0): $(c_00)/$(ntests) ($(100*c_00/ntests)%)"
+@info "   local (0,5): $(c_05)/$(ntests) ($(100*c_05/ntests)%)"
+if c_un > 0
+    @info "        others: $(c_un)/$(ntests) ($(100*c_un/ntests)%)"
 end
 
 savefig(filepath * ".pdf")
