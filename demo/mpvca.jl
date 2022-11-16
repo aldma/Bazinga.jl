@@ -27,8 +27,8 @@
        	       [ x2                  ]
 	           [ x1 + x2 - 5         ]
 	    D    = { c | (c1,c2) in Dvc, (c3,c4) in Dvc }
-        nx = 2
-        ny = 4
+        nx   = 2
+        ny   = 4
 	with
 	    Dvc  = { (a,b) | a >= 0, a*b >= 0 }
              = { (a,b) | a = 0 } ∪ { (a,b) | a >= 0, b >= 0 }
@@ -37,14 +37,14 @@
         name = 'mpvca_fullslack'
         x    = [x1, x2, s1, s2, s3, s4]
         f(x) = 4*x1 + 2*x2
-        g(x) = Indicator_Box[0,+infty]((x1,x2)) + Indicator_Dvc(s1, s2) + Indicator_Dvc(s3, s4)
+        g(x) = Indicator_Box[0,+infty](x1, x2) + Indicator_Dvc(s1, s2) + Indicator_Dvc(s3, s4)
         c(x) = [ x1                  - s1 ]
                [ x1 + x2 - 5*sqrt(2) - s2 ]
                [ x2                  - s3 ]
                [ x1 + x2 - 5         - s4 ]
         D    = (0, 0, 0, 0)
-        nx = 6
-        ny = 4
+        nx   = 6
+        ny   = 4
 
     (iii) slack variables for nontrivial constraints
         name = 'mpvca_slack'
@@ -54,8 +54,8 @@
         c(x) = [ x1 + x2 - 5*sqrt(2) - s1 ]
                [ x1 + x2 - 5         - s2 ]
         D    = (0, 0)
-        nx = 4
-        ny = 2
+        nx   = 4
+        ny   = 2
 
     References:
     [Hoh09]     Hoheisel, "Mathematical Programs with Vanishing Constraints",
@@ -124,7 +124,12 @@ end
 
 struct ConstraintMPVCAfullslack <: SmoothFunction end
 function Bazinga.eval!(cx, c::ConstraintMPVCAfullslack, x)
-    cx .= [x[1] - x[3]; x[1] + x[2] - 5.0 * sqrt(2.0) - x[4]; x[2] - x[5]; x[1] + x[2] - 5.0 - x[6]]
+    cx .= [
+        x[1] - x[3]
+        x[1] + x[2] - 5.0 * sqrt(2.0) - x[4]
+        x[2] - x[5]
+        x[1] + x[2] - 5.0 - x[6]
+    ]
     return nothing
 end
 function Bazinga.jtprod!(jtv, c::ConstraintMPVCAfullslack, x, v)
@@ -190,7 +195,7 @@ solver(f, g, c, D, x0, y0) = Bazinga.alps(
     subsolver = subsolver,
     subsolver_maxit = subsolver_maxit,
 )
-_ = solver(f, g, c, D, ones(T, nx), zeros(T, ny))
+_ = solver(f, g, c, D, ones(T, nx), zeros(T, ny)) # warm up
 
 ################################################################################
 # grid of starting points
@@ -231,7 +236,7 @@ for i = 1:ntests
             xgrid[i][1] + xgrid[i][2] - 5 * sqrt(2)
             xgrid[i][2]
             xgrid[i][1] + xgrid[i][2] - 5
-        ]        
+        ]
     end
     y0 = zeros(T, ny)
 
