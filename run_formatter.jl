@@ -3,7 +3,7 @@ using JuliaFormatter
 
 # running this file should automatically format all *.jl files in the `folders`
 
-the_formatter_function(path::String) = format_file(path, indent = 4)
+the_formatter_function(path::String) = format_file(path, indent = 4, margin = 92)
 
 basepath = @__DIR__
 folders = [

@@ -131,6 +131,7 @@ function Bazinga.proj!(z, D::SetXOR, x)
     return nothing
 end
 
+# tets setup
 problem_name = "eitheror" # eitheror, xor, *_fullslack
 solver_name = "alps" # alps, als
 subsolver_name = "lbfgs" # lbfgs, noaccel, broyden, anderson
@@ -361,3 +362,25 @@ if c_un > 0
 end
 
 savefig(filepath * ".pdf")
+
+# store some statistics
+stats = DataFrame()
+push!(
+        stats,
+        (
+            npoints = ntests,
+            iters_max = maximum(data.iters),
+            iters_median = median(data.iters),
+            subiters_max = maximum(data.sub_iters),
+            subiters_median = median(data.sub_iters),
+            runtime_max = maximum(data.runtime),
+            runtime_median = median(data.runtime),
+            global_nabs = c_22,
+            global_nrel = 100*c_22/ntests,
+            local_nabs = c_44,
+            local_nrel = 100*c_44/ntests,
+            unkwn_nabs = c_un,
+            unkwn_nrel = 100*c_un/ntests,
+        ),
+    )
+CSV.write(filepath * "_stats" * ".csv", stats, header = true)

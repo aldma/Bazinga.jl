@@ -144,9 +144,9 @@ function Bazinga.proj!(z, D::SetMPVCA, cx)
     return nothing
 end
 
-# iter
+# test setup
 problem_name = "mpvca" # mpvca, *_slack, *_fullslack
-solver_name = "als" # alps, als
+solver_name = "alps" # alps, als
 subsolver_name = "lbfgs" # lbfgs
 
 T = Float64
@@ -381,3 +381,25 @@ if c_un > 0
 end
 
 savefig(filepath * ".pdf")
+
+# store some statistics
+stats = DataFrame()
+push!(
+        stats,
+        (
+            npoints = ntests,
+            iters_max = maximum(data.iters),
+            iters_median = median(data.iters),
+            subiters_max = maximum(data.sub_iters),
+            subiters_median = median(data.sub_iters),
+            runtime_max = maximum(data.runtime),
+            runtime_median = median(data.runtime),
+            global_nabs = c_00,
+            global_nrel = 100*c_00/ntests,
+            local_nabs = c_05,
+            local_nrel = 100*c_05/ntests,
+            unkwn_nabs = c_un,
+            unkwn_nrel = 100*c_un/ntests,
+        ),
+    )
+CSV.write(filepath * "_stats" * ".csv", stats, header = true)
