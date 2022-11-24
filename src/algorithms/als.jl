@@ -115,6 +115,6 @@ function als(
         :unknown
     end
 
-    return x, y, tot_it, tot_inner_it, elapsed_time, inner_tol, norm_res_prim, s, mu
+    return x, y, tot_it, tot_inner_it, elapsed_time, status, inner_tol, norm_res_prim, s, mu
 
 end
