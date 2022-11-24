@@ -145,9 +145,9 @@ function Bazinga.proj!(z, D::SetMPVCA, cx)
 end
 
 # test setup
-problem_name = "mpvca" # mpvca, *_slack, *_fullslack
-solver_name = "alps" # alps, als
-subsolver_name = "lbfgs" # lbfgs
+problem_name    = "mpvca_slack" # mpvca, *_slack, (*_fullslack)
+solver_name     = "alps" # alps, als
+subsolver_name  = "lbfgs" # lbfgs, (noaccel)
 
 T = Float64
 f = SmoothCostMPVCA(T.([4; 2]))
@@ -170,10 +170,10 @@ elseif problem_name == "mpvca_fullslack"
     nx = 6
     ny = 4
 else
-    error("Unknown problem name")
+    @error "Unknown problem name"
 end
 
-# solver setup
+# setup solver and subsolver
 subsolver_directions = if subsolver_name == "noaccel"
     ProximalAlgorithms.NoAcceleration()
 elseif subsolver_name == "broyden"
@@ -186,47 +186,40 @@ else
     @error "Unknown subsolver name"
 end
 subsolver_maxit = 1_000
-subsolver_minimum_gamma = eps(T)
 subsolver(; kwargs...) = ProximalAlgorithms.PANOCplus(
+    minimum_gamma = eps(T),
     directions = subsolver_directions,
     maxit = subsolver_maxit,
-    freq = subsolver_maxit,
-    minimum_gamma = subsolver_minimum_gamma;
+    freq = subsolver_maxit;
     kwargs...,
 )
-if solver_name == "alps"
-    solver(f, g, c, D, x0, y0) = Bazinga.alps(
-        f,
-        g,
-        c,
-        D,
-        x0,
-        y0,
-        verbose = false,
-        tol = 1e-8,
-        subsolver = subsolver,
-        subsolver_maxit = subsolver_maxit,
-    )
+solver_base = if solver_name == "alps"
+    Bazinga.alps
 elseif solver_name == "als"
-    solver(f, g, c, D, x0, y0) = Bazinga.als(
-        f,
-        g,
-        c,
-        D,
-        x0,
-        y0,
-        verbose = false,
-        tol = 1e-8,
-        subsolver = subsolver,
-        subsolver_maxit = subsolver_maxit,
-    )
+    Bazinga.als
 else
     @error "Unknown solver name"
 end
+y0 = zeros(T, ny) # dual guess
+solver(x0) = solver_base(
+    f,
+    g,
+    c,
+    D,
+    x0,
+    y0,
+    tol = 1e-8,
+    inner_tol = 1.0,
+    verbose = false,
+    subsolver = subsolver,
+    subsolver_maxit = subsolver_maxit,
+)
 
 @info "Problem " * problem_name
 @info "Solver  " * solver_name * "(" * subsolver_name * ")"
-_ = solver(f, g, c, D, zeros(T, nx), zeros(T, ny)) # warm up
+
+# warm up the solver
+_ = solver(zeros(T, nx))
 
 ################################################################################
 # grid of starting points
@@ -269,9 +262,9 @@ for i = 1:ntests
             xgrid[i][1] + xgrid[i][2] - 5
         ]
     end
-    y0 = zeros(T, ny)
 
-    out = solver(f, g, c, D, x0, y0)
+    # solve instance
+    out = solver(x0)
 
     xsol = out[1]
     push!(
@@ -285,6 +278,7 @@ for i = 1:ntests
             iters = out[3],
             sub_iters = out[4],
             runtime = out[5],
+            is_solved = out[6] == :first_order ? 1 : 0,
         ),
     )
 
@@ -292,7 +286,8 @@ end
 
 CSV.write(filepath * ".csv", data, header = true)
 
-@info " sample points: $(ntests)"
+nsolved = sum(data.is_solved)
+@info " sample points: $(ntests)  (solved $(nsolved))"
 @info "    iterations: max $(maximum(data.iters)), median  $(median(data.iters))"
 @info "sub iterations: max $(maximum(data.sub_iters)), median  $(median(data.sub_iters))"
 @info "       runtime: max $(maximum(data.runtime)), median  $(median(data.runtime))"
@@ -302,12 +297,12 @@ CSV.write(filepath * ".csv", data, header = true)
 ################################################################################
 
 # minimizers
-x_00 = T.([0; 0])
-x_05 = T.([0; 5])
+x_glb = T.([0; 0])
+x_lcl = T.([0; 5])
 
 # counters
-global c_00 = 0
-global c_05 = 0
+global c_glb = 0
+global c_lcl = 0
 global c_un = 0
 
 # plot feasible set
@@ -346,25 +341,25 @@ for i = 1:ntests
     xi = [data[i, 2]; data[i, 3]]
     xf = [data[i, 4]; data[i, 5]]
 
-    if norm(xf - x_00) <= tolx
-        global c_00 += 1
+    if norm(xf - x_glb) <= tolx
+        global c_glb += 1
         scatter!(
             hplt,
             [xi[1]],
             [xi[2]],
-            color = :black,
+            color = :blue,
             marker = :circle,
             markerstrokewidth = 0,
             legend = false,
         )
-    elseif norm(xf - x_05) <= tolx
-        global c_05 += 1
+    elseif norm(xf - x_lcl) <= tolx
+        global c_lcl += 1
         scatter!(
             hplt,
             [xi[1]],
             [xi[2]],
             color = :red,
-            marker = :cross,
+            marker = :diamond,
             markerstrokewidth = 0,
             legend = false,
         )
@@ -374,8 +369,8 @@ for i = 1:ntests
     end
 end
 
-@info "  global (0,0): $(c_00)/$(ntests) ($(100*c_00/ntests)%)"
-@info "   local (0,5): $(c_05)/$(ntests) ($(100*c_05/ntests)%)"
+@info " global (0, 0): $(c_glb)/$(ntests) ($(100*c_glb/ntests)%)"
+@info "  local (0, 5): $(c_lcl)/$(ntests) ($(100*c_lcl/ntests)%)"
 if c_un > 0
     @info "        others: $(c_un)/$(ntests) ($(100*c_un/ntests)%)"
 end
@@ -385,21 +380,22 @@ savefig(filepath * ".pdf")
 # store some statistics
 stats = DataFrame()
 push!(
-        stats,
-        (
-            npoints = ntests,
-            iters_max = maximum(data.iters),
-            iters_median = median(data.iters),
-            subiters_max = maximum(data.sub_iters),
-            subiters_median = median(data.sub_iters),
-            runtime_max = maximum(data.runtime),
-            runtime_median = median(data.runtime),
-            global_nabs = c_00,
-            global_nrel = 100*c_00/ntests,
-            local_nabs = c_05,
-            local_nrel = 100*c_05/ntests,
-            unkwn_nabs = c_un,
-            unkwn_nrel = 100*c_un/ntests,
-        ),
-    )
+    stats,
+    (
+        npoints = ntests,
+        nsolved = nsolved,
+        iters_max = maximum(data.iters),
+        iters_median = median(data.iters),
+        subiters_max = maximum(data.sub_iters),
+        subiters_median = median(data.sub_iters),
+        runtime_max = maximum(data.runtime),
+        runtime_median = median(data.runtime),
+        global_nabs = c_glb,
+        global_nrel = 100 * c_glb / ntests,
+        local_nabs = c_lcl,
+        local_nrel = 100 * c_lcl / ntests,
+        unkwn_nabs = c_un,
+        unkwn_nrel = 100 * c_un / ntests,
+    ),
+)
 CSV.write(filepath * "_stats" * ".csv", stats, header = true)
