@@ -145,7 +145,7 @@ function Bazinga.proj!(z, D::SetMPVCA, cx)
 end
 
 # test setup
-problem_name    = "mpvca_slack" # mpvca, *_slack, (*_fullslack)
+problem_name    = "mpvca" # mpvca, *_slack, (*_fullslack)
 solver_name     = "alps" # alps, als
 subsolver_name  = "lbfgs" # lbfgs, (noaccel)
 
