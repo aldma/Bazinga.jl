@@ -27,25 +27,24 @@ If you are using Bazinga for your work or research, we encourage you to
 
 * Put a star on this repository,
 * Cite our work:
-
-    @article{demarchi2023constrained,
-        author = {De~Marchi, Alberto and Jia, Xiaoxi and Kanzow, Christian and Mehlitz, Patrick},
-        title = {Constrained Composite Optimization and Augmented {L}agrangian Methods},
-        journal = {Mathematical Programming},
-        year = {2023},
-        eprinttype = {arXiv},
-        eprint = {2203.05276},
-        doi = {10.1007/s10107-022-01922-4},
-    }
-
-    @misc{demarchi2023implicit,
-        author = {De Marchi, Alberto},
-        title = {Implicit Augmented {L}agrangian and Generalized Optimization},
-        year = {2023},
-        eprinttype = {arXiv},
-        eprint = {2302.00363},
-    }
-
+```
+   @article{demarchi2023constrained,
+      author = {De~Marchi, Alberto and Jia, Xiaoxi and Kanzow, Christian and Mehlitz, Patrick},
+      title = {Constrained Composite Optimization and Augmented {L}agrangian Methods},
+      journal = {Mathematical Programming},
+      year = {2023},
+      eprinttype = {arXiv},
+      eprint = {2203.05276},
+      doi = {10.1007/s10107-022-01922-4},
+   }
+   @misc{demarchi2023implicit,
+      author = {De Marchi, Alberto},
+      title = {Implicit Augmented {L}agrangian and Generalized Optimization},
+      year = {2023},
+      eprinttype = {arXiv},
+      eprint = {2302.00363},
+   }
+```
 We are looking forward to hearing your success stories with Bazinga! Please [share them with us](mailto:aldmarchi@gmail.com).
 
 ## Bug reports and support
